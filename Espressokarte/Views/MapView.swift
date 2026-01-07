@@ -106,6 +106,14 @@ struct MapView: View {
                     }
             }
         }
+        .onChange(of: showCafeDetail) { _, isShowing in
+            if !isShowing {
+                // Refresh cafes when detail sheet is dismissed (price may have been updated)
+                Task {
+                    await cloudKitManager.fetchAllCafes()
+                }
+            }
+        }
         .task {
             // Request location permission
             locationManager.requestPermission()
