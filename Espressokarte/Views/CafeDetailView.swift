@@ -10,65 +10,87 @@ import MapKit
 
 /// Detailed view of a cafe showing current price and history
 struct CafeDetailView: View {
-    let cafe: Cafe
+    let cafeId: String
 
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var cloudKitManager = CloudKitManager.shared
     @StateObject private var locationManager = LocationManager.shared
 
     @State private var showUpdatePrice = false
 
+    /// Get the current cafe from CloudKit manager (updates when data refreshes)
+    private var cafe: Cafe? {
+        cloudKitManager.cafes.first { $0.id == cafeId }
+    }
+
+    init(cafe: Cafe) {
+        self.cafeId = cafe.id
+    }
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Header with price
-                    CafeDetailHeader(cafe: cafe)
+            if let cafe = cafe {
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Header with price
+                        CafeDetailHeader(cafe: cafe)
 
-                    // Map preview
-                    CafeMapPreview(cafe: cafe)
+                        // Map preview
+                        CafeMapPreview(cafe: cafe)
 
-                    // Address and distance
-                    CafeLocationInfo(
-                        cafe: cafe,
-                        distance: locationManager.formattedDistance(to: cafe.coordinate)
-                    )
+                        // Address and distance
+                        CafeLocationInfo(
+                            cafe: cafe,
+                            distance: locationManager.formattedDistance(to: cafe.coordinate)
+                        )
 
-                    // Latest update info
-                    if let latestRecord = cafe.latestPriceRecord {
-                        LatestUpdateCard(record: latestRecord)
+                        // Latest update info
+                        if let latestRecord = cafe.latestPriceRecord {
+                            LatestUpdateCard(record: latestRecord)
+                        }
+
+                        // Price history
+                        if !cafe.priceHistory.isEmpty {
+                            PriceHistorySection(priceHistory: cafe.priceHistory)
+                        }
+
+                        // Update price button
+                        Button(action: { showUpdatePrice = true }) {
+                            Label("Update Price", systemImage: "pencil")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                        }
+                        .padding(.horizontal)
+                        .accessibilityLabel("Update espresso price")
                     }
-
-                    // Price history
-                    if !cafe.priceHistory.isEmpty {
-                        PriceHistorySection(priceHistory: cafe.priceHistory)
-                    }
-
-                    // Update price button
-                    Button(action: { showUpdatePrice = true }) {
-                        Label("Update Price", systemImage: "pencil")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
-                    .padding(.horizontal)
-                    .accessibilityLabel("Update espresso price")
+                    .padding(.bottom, 20)
                 }
-                .padding(.bottom, 20)
-            }
-            .navigationTitle(cafe.name)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        dismiss()
+                .navigationTitle(cafe.name)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") {
+                            dismiss()
+                        }
                     }
                 }
-            }
-            .sheet(isPresented: $showUpdatePrice) {
-                UpdatePriceView(cafe: cafe)
+                .sheet(isPresented: $showUpdatePrice) {
+                    UpdatePriceView(cafe: cafe)
+                }
+                .onChange(of: showUpdatePrice) { _, isShowing in
+                    if !isShowing {
+                        // Refresh when update price sheet is dismissed
+                        Task {
+                            await cloudKitManager.fetchAllCafes()
+                        }
+                    }
+                }
+            } else {
+                ContentUnavailableView("Cafe not found", systemImage: "cup.and.saucer")
             }
         }
     }
