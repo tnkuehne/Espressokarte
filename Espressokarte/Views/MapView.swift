@@ -100,17 +100,11 @@ struct MapView: View {
         }
         .sheet(isPresented: $showCafeDetail) {
             if let cafe = selectedCafe {
-                CafeDetailView(cafe: cafe)
-                    .onDisappear {
-                        selectedCafe = nil
-                    }
-            }
-        }
-        .onChange(of: showCafeDetail) { _, isShowing in
-            if !isShowing {
-                // Refresh cafes when detail sheet is dismissed (price may have been updated)
-                Task {
-                    await cloudKitManager.fetchAllCafes()
+                CafeDetailView(cafe: cafe, onPriceUpdated: { updatedCafe in
+                    cloudKitManager.updateLocalCafe(updatedCafe)
+                })
+                .onDisappear {
+                    selectedCafe = nil
                 }
             }
         }

@@ -317,4 +317,11 @@ final class CloudKitManager: ObservableObject {
     func handleNotification() async {
         await fetchAllCafes()
     }
+
+    /// Updates a single cafe in the local array without refetching
+    func updateLocalCafe(_ cafe: Cafe) {
+        if let index = cafes.firstIndex(where: { $0.id == cafe.id }) {
+            cafes[index] = cafe
+        }
+    }
 }
