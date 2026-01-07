@@ -1,0 +1,424 @@
+//
+//  CafeDetailView.swift
+//  Espressokarte
+//
+//  Created by Timo Kuehne on 07.01.26.
+//
+
+import SwiftUI
+import MapKit
+
+/// Detailed view of a cafe showing current price and history
+struct CafeDetailView: View {
+    let cafe: Cafe
+
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var locationManager = LocationManager.shared
+
+    @State private var showUpdatePrice = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header with price
+                    CafeDetailHeader(cafe: cafe)
+
+                    // Map preview
+                    CafeMapPreview(cafe: cafe)
+
+                    // Address and distance
+                    CafeLocationInfo(
+                        cafe: cafe,
+                        distance: locationManager.formattedDistance(to: cafe.coordinate)
+                    )
+
+                    // Latest update info
+                    if let latestRecord = cafe.latestPriceRecord {
+                        LatestUpdateCard(record: latestRecord)
+                    }
+
+                    // Price history
+                    if !cafe.priceHistory.isEmpty {
+                        PriceHistorySection(priceHistory: cafe.priceHistory)
+                    }
+
+                    // Update price button
+                    Button(action: { showUpdatePrice = true }) {
+                        Label("Update Price", systemImage: "pencil")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                    }
+                    .padding(.horizontal)
+                    .accessibilityLabel("Update espresso price")
+                }
+                .padding(.bottom, 20)
+            }
+            .navigationTitle(cafe.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+            .sheet(isPresented: $showUpdatePrice) {
+                UpdatePriceView(cafe: cafe)
+            }
+        }
+    }
+}
+
+/// Header showing the cafe name and current price
+struct CafeDetailHeader: View {
+    let cafe: Cafe
+
+    var body: some View {
+        VStack(spacing: 12) {
+            // Large price display
+            if let price = cafe.formattedPrice {
+                Text(price)
+                    .font(.system(size: 64, weight: .bold, design: .rounded))
+                    .foregroundColor(priceColor)
+            } else {
+                Text("No price")
+                    .font(.title)
+                    .foregroundColor(.secondary)
+            }
+
+            Text("Espresso")
+                .font(.title3)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(Color(.systemGray6))
+    }
+
+    private var priceColor: Color {
+        guard let price = cafe.currentPrice else { return .gray }
+
+        switch price {
+        case ..<2.0: return .green
+        case 2.0..<2.50: return .blue
+        case 2.50..<3.0: return .orange
+        default: return .red
+        }
+    }
+}
+
+/// Mini map showing cafe location
+struct CafeMapPreview: View {
+    let cafe: Cafe
+
+    var body: some View {
+        Map(initialPosition: .region(MKCoordinateRegion(
+            center: cafe.coordinate,
+            latitudinalMeters: 500,
+            longitudinalMeters: 500
+        ))) {
+            Marker(cafe.name, coordinate: cafe.coordinate)
+                .tint(.blue)
+        }
+        .mapStyle(.standard)
+        .frame(height: 150)
+        .cornerRadius(12)
+        .padding(.horizontal)
+        .disabled(true)
+    }
+}
+
+/// Address and distance info
+struct CafeLocationInfo: View {
+    let cafe: Cafe
+    let distance: String?
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Label(cafe.address, systemImage: "mappin")
+                    .font(.subheadline)
+
+                if let distance = distance {
+                    Label(distance, systemImage: "figure.walk")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            // Open in Maps button
+            Button(action: openInMaps) {
+                Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                    .font(.title2)
+                    .foregroundColor(.blue)
+            }
+            .accessibilityLabel("Open in Maps")
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+        .padding(.horizontal)
+    }
+
+    private func openInMaps() {
+        let location = CLLocation(latitude: cafe.coordinate.latitude, longitude: cafe.coordinate.longitude)
+        let mapItem = MKMapItem(location: location, address: nil)
+        mapItem.name = cafe.name
+        mapItem.openInMaps(launchOptions: [
+            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+        ])
+    }
+}
+
+/// Card showing who last updated the price
+struct LatestUpdateCard: View {
+    let record: PriceRecord
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "person.circle.fill")
+                    .font(.title3)
+                    .foregroundColor(.blue)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Added by \(record.addedByName)")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+
+                    Text(record.relativeDate)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+            }
+
+            if let note = record.note, !note.isEmpty {
+                Text(note)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding(.leading, 32)
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+        .padding(.horizontal)
+    }
+}
+
+/// Section showing price history
+struct PriceHistorySection: View {
+    let priceHistory: [PriceRecord]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Price History")
+                .font(.headline)
+                .padding(.horizontal)
+
+            ForEach(priceHistory.sorted(by: { $0.date > $1.date })) { record in
+                PriceHistoryRow(record: record)
+            }
+        }
+    }
+}
+
+/// Single row in price history
+struct PriceHistoryRow: View {
+    let record: PriceRecord
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(record.formattedDate)
+                    .font(.subheadline)
+
+                Text("by \(record.addedByName)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                if let note = record.note, !note.isEmpty {
+                    Text(note)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .italic()
+                }
+            }
+
+            Spacer()
+
+            Text(record.formattedPrice)
+                .font(.title3)
+                .fontWeight(.semibold)
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+        .padding(.horizontal)
+    }
+}
+
+/// View for updating an existing cafe's price
+struct UpdatePriceView: View {
+    let cafe: Cafe
+
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var cloudKitManager = CloudKitManager.shared
+
+    @State private var priceText = ""
+    @State private var note = ""
+    @State private var isSaving = false
+    @State private var showError = false
+    @State private var errorMessage = ""
+
+    @FocusState private var isPriceFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                // Cafe name
+                Text(cafe.name)
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+
+                // Current price reference
+                if let currentPrice = cafe.formattedPrice {
+                    Text("Current: \(currentPrice)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                // Price input
+                HStack {
+                    Text("€")
+                        .font(.system(size: 40, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    TextField("0.00", text: $priceText)
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.center)
+                        .focused($isPriceFocused)
+                        .accessibilityLabel("New espresso price")
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(16)
+                .padding(.horizontal)
+
+                // Note field
+                TextField("Add a note (optional)", text: $note)
+                    .textFieldStyle(.roundedBorder)
+                    .padding(.horizontal)
+                    .accessibilityLabel("Optional note")
+
+                Spacer()
+            }
+            .padding(.top, 24)
+            .navigationTitle("Update Price")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        savePrice()
+                    }
+                    .disabled(!isValidPrice || isSaving)
+                    .fontWeight(.semibold)
+                }
+            }
+            .alert("Error", isPresented: $showError) {
+                Button("OK") {}
+            } message: {
+                Text(errorMessage)
+            }
+            .overlay {
+                if isSaving {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                    ProgressView("Saving...")
+                        .padding()
+                        .background(.ultraThickMaterial)
+                        .cornerRadius(12)
+                }
+            }
+            .onAppear {
+                isPriceFocused = true
+            }
+        }
+    }
+
+    private var isValidPrice: Bool {
+        guard let price = Double(priceText.replacingOccurrences(of: ",", with: ".")) else {
+            return false
+        }
+        return price > 0 && price < 20
+    }
+
+    private func savePrice() {
+        guard let price = Double(priceText.replacingOccurrences(of: ",", with: ".")) else {
+            return
+        }
+
+        isSaving = true
+
+        Task {
+            do {
+                let noteText = note.isEmpty ? nil : note
+                _ = try await cloudKitManager.addOrUpdateCafe(cafe, price: price, note: noteText)
+
+                await MainActor.run {
+                    isSaving = false
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    isSaving = false
+                    errorMessage = error.localizedDescription
+                    showError = true
+                }
+            }
+        }
+    }
+}
+
+#Preview {
+    CafeDetailView(cafe: Cafe(
+        id: "preview-1",
+        name: "Test Cafe",
+        address: "Marienplatz 1, 80331 Munich",
+        latitude: 48.1371,
+        longitude: 11.5754,
+        currentPrice: 2.80,
+        priceHistory: [
+            PriceRecord(
+                price: 2.80,
+                date: Date(),
+                addedBy: "user1",
+                addedByName: "Max",
+                note: "Great espresso!"
+            ),
+            PriceRecord(
+                price: 2.50,
+                date: Date().addingTimeInterval(-86400 * 30),
+                addedBy: "user2",
+                addedByName: "Anna",
+                note: nil
+            )
+        ]
+    ))
+}

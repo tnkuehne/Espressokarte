@@ -6,5 +6,7 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Espressokarte uses your location to find nearby cafes and show your position on the map.</string>
 </dict>
 </plist>
