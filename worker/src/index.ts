@@ -18,12 +18,10 @@ interface RequestBody {
 	image: string;
 	mediaType?: string;
 }
-
 interface PriceResult {
 	price: number | null;
 	confidence: 'high' | 'low' | 'none';
 }
-
 // Fetch Apple's public keys for token validation
 async function getApplePublicKeys(): Promise<any> {
 	const response = await fetch('https://appleid.apple.com/auth/keys');
@@ -105,7 +103,7 @@ async function extractPriceFromImage(apiKey: string, imageBase64: string, mediaT
 	const ai = new GoogleGenAI({ apiKey });
 
 	const response = await ai.models.generateContent({
-		model: 'gemini-3.0-flash',
+		model: 'gemini-3-flash-preview',
 		contents: [
 			{
 				role: 'user',
