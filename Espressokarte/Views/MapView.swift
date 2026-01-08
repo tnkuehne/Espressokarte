@@ -5,21 +5,18 @@
 //  Created by Timo Kuehne on 07.01.26.
 //
 
-import SwiftUI
 import MapKit
+import SwiftUI
 
 /// Main map view showing cafes with espresso prices
 struct MapView: View {
     @StateObject private var cloudKitManager = CloudKitManager.shared
     @StateObject private var locationManager = LocationManager.shared
 
-    @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var selectedCafe: Cafe?
     @State private var showAddPrice = false
     @State private var showCafeDetail = false
-
-    // Munich center coordinates
-    private let munichCenter = CLLocationCoordinate2D(latitude: 48.1351, longitude: 11.5820)
 
     var body: some View {
         ZStack {
@@ -100,9 +97,12 @@ struct MapView: View {
         }
         .sheet(isPresented: $showCafeDetail) {
             if let cafe = selectedCafe {
-                CafeDetailView(cafe: cafe, onPriceUpdated: { updatedCafe in
-                    cloudKitManager.updateLocalCafe(updatedCafe)
-                })
+                CafeDetailView(
+                    cafe: cafe,
+                    onPriceUpdated: { updatedCafe in
+                        cloudKitManager.updateLocalCafe(updatedCafe)
+                    }
+                )
                 .onDisappear {
                     selectedCafe = nil
                 }
@@ -120,22 +120,10 @@ struct MapView: View {
 
             // Set up CloudKit subscription
             await cloudKitManager.setupSubscription()
-
-            // Center on user location or Munich
-            updateCameraPosition()
         }
         .refreshable {
             await cloudKitManager.fetchAllCafes()
         }
-    }
-
-    private func updateCameraPosition() {
-        let center = locationManager.currentLocation?.coordinate ?? munichCenter
-        cameraPosition = .region(MKCoordinateRegion(
-            center: center,
-            latitudinalMeters: 2000,
-            longitudinalMeters: 2000
-        ))
     }
 }
 
