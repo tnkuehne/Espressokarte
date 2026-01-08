@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
+import { z } from 'zod/v4';
 
 export interface Env {
 	GEMINI_API_KEY: string;
@@ -18,10 +19,13 @@ interface RequestBody {
 	image: string;
 	mediaType?: string;
 }
-interface PriceResult {
-	price: number | null;
-	confidence: 'high' | 'low' | 'none';
-}
+
+// Zod schema for price extraction
+const priceResultSchema = z.object({
+	price: z.number().nullable().describe('The espresso price as a decimal number, e.g. 2.80. Null if not found.'),
+});
+
+type PriceResult = z.infer<typeof priceResultSchema>;
 // Fetch Apple's public keys for token validation
 async function getApplePublicKeys(): Promise<any> {
 	const response = await fetch('https://appleid.apple.com/auth/keys');
@@ -98,7 +102,7 @@ async function verifyAppleToken(token: string, bundleId: string): Promise<AppleT
 	}
 }
 
-// Call Gemini 3 Flash with structured output
+// Call Gemini 3 Flash with structured output using Zod schema
 async function extractPriceFromImage(apiKey: string, imageBase64: string, mediaType: string): Promise<PriceResult> {
 	const ai = new GoogleGenAI({ apiKey });
 
@@ -115,34 +119,14 @@ async function extractPriceFromImage(apiKey: string, imageBase64: string, mediaT
 						},
 					},
 					{
-						text: `Look at this cafe menu image. Find the price for an espresso (not double espresso, not cappuccino, just a regular espresso).
-
-- price: the espresso price as a number (use decimal point, e.g., 2.80). Set to null if not found.
-- confidence: "high" if you clearly found it, "low" if you're guessing, "none" if you cannot find it.`,
+						text: `Look at this cafe menu image. Find the price for an espresso (not double espresso, not cappuccino, just a regular single espresso). Return the price as a number (e.g., 2.80) or null if not found.`,
 					},
 				],
 			},
 		],
 		config: {
-			temperature: 0.1,
-			maxOutputTokens: 100,
 			responseMimeType: 'application/json',
-			responseSchema: {
-				type: Type.OBJECT,
-				properties: {
-					price: {
-						type: Type.NUMBER,
-						nullable: true,
-						description: 'The espresso price as a decimal number, e.g. 2.80',
-					},
-					confidence: {
-						type: Type.STRING,
-						enum: ['high', 'low', 'none'],
-						description: 'Confidence level of the price detection',
-					},
-				},
-				required: ['price', 'confidence'],
-			},
+			responseJsonSchema: z.toJSONSchema(priceResultSchema),
 		},
 	});
 
@@ -151,7 +135,7 @@ async function extractPriceFromImage(apiKey: string, imageBase64: string, mediaT
 		throw new Error('No response from Gemini');
 	}
 
-	return JSON.parse(text) as PriceResult;
+	return priceResultSchema.parse(JSON.parse(text));
 }
 
 // Main handler
