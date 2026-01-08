@@ -180,21 +180,15 @@ extension AppleSignInManager: ASAuthorizationControllerDelegate {
             UserDefaults.standard.set(credential.user, forKey: userIdKey)
 
             // Store full name if provided (only available on first sign-in)
-            print("DEBUG: credential.fullName = \(String(describing: credential.fullName))")
-            print("DEBUG: givenName = \(String(describing: credential.fullName?.givenName))")
-            print("DEBUG: familyName = \(String(describing: credential.fullName?.familyName))")
-
             if let fullName = credential.fullName {
                 let givenName = fullName.givenName ?? ""
                 let familyName = fullName.familyName ?? ""
                 let displayName = [givenName, familyName]
                     .filter { !$0.isEmpty }
                     .joined(separator: " ")
-                print("DEBUG: displayName = '\(displayName)'")
                 if !displayName.isEmpty {
                     UserDefaults.standard.set(displayName, forKey: userNameKey)
                     userName = displayName
-                    print("DEBUG: Stored userName = \(displayName)")
                 }
             }
 
