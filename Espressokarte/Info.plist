@@ -8,5 +8,7 @@
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Espressokarte uses your location to find nearby cafes and show your position on the map.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Espressokarte needs camera access to photograph menu prices.</string>
 </dict>
 </plist>

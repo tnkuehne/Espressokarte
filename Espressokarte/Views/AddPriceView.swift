@@ -5,8 +5,10 @@
 //  Created by Timo Kuehne on 07.01.26.
 //
 
-import SwiftUI
+import AVFoundation
+import AuthenticationServices
 import MapKit
+import SwiftUI
 
 /// View for adding a new espresso price
 struct AddPriceView: View {
@@ -15,16 +17,17 @@ struct AddPriceView: View {
     @StateObject private var locationManager = LocationManager.shared
     @StateObject private var cafeSearchService = CafeSearchService.shared
     @StateObject private var cloudKitManager = CloudKitManager.shared
+    @StateObject private var appleSignInManager = AppleSignInManager.shared
+    @StateObject private var priceExtractionService = PriceExtractionService.shared
 
     @State private var selectedCafe: MapItemData?
-    @State private var priceText = ""
-    @State private var note = ""
+    @State private var extractedPrice: Double?
     @State private var searchQuery = ""
     @State private var isSaving = false
     @State private var showError = false
     @State private var errorMessage = ""
-
-    @FocusState private var isPriceFocused: Bool
+    @State private var showCamera = false
+    @State private var showCameraPermissionAlert = false
 
     var body: some View {
         NavigationStack {
@@ -34,16 +37,19 @@ struct AddPriceView: View {
                     SelectedCafeHeader(cafe: cafe) {
                         withAnimation {
                             selectedCafe = nil
+                            extractedPrice = nil
                         }
                     }
                 }
 
-                // Price input (always visible when cafe is selected)
+                // Price capture section (when cafe is selected)
                 if selectedCafe != nil {
-                    PriceInputSection(
-                        priceText: $priceText,
-                        note: $note,
-                        isPriceFocused: $isPriceFocused
+                    PriceCaptureSection(
+                        extractedPrice: $extractedPrice,
+                        isSignedIn: appleSignInManager.isSignedIn,
+                        isProcessing: priceExtractionService.isProcessing,
+                        onSignIn: signInWithApple,
+                        onTakePhoto: checkCameraAndOpen
                     )
                     .padding()
                 }
@@ -59,7 +65,7 @@ struct AddPriceView: View {
 
                 Spacer()
             }
-            .navigationTitle(selectedCafe == nil ? "Add Price" : "Enter Price")
+            .navigationTitle(selectedCafe == nil ? "Add Price" : "Capture Price")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -69,11 +75,11 @@ struct AddPriceView: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    if selectedCafe != nil {
+                    if selectedCafe != nil && extractedPrice != nil {
                         Button("Save") {
                             savePrice()
                         }
-                        .disabled(!isValidPrice || isSaving)
+                        .disabled(isSaving)
                         .fontWeight(.semibold)
                     }
                 }
@@ -82,6 +88,21 @@ struct AddPriceView: View {
                 Button("OK") {}
             } message: {
                 Text(errorMessage)
+            }
+            .alert("Camera Access Required", isPresented: $showCameraPermissionAlert) {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Please enable camera access in Settings to photograph menu prices.")
+            }
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraPicker { image in
+                    extractPriceFromImage(image)
+                }
             }
             .overlay {
                 if isSaving {
@@ -111,27 +132,59 @@ struct AddPriceView: View {
                 // Auto-select if within 30 meters
                 if distance < 30 {
                     selectedCafe = closest
-                    isPriceFocused = true
                 }
             }
         }
-        .onChange(of: selectedCafe) { _, newValue in
-            if newValue != nil {
-                isPriceFocused = true
+    }
+
+    private func signInWithApple() {
+        Task {
+            do {
+                _ = try await appleSignInManager.signIn()
+            } catch {
+                errorMessage = error.localizedDescription
+                showError = true
             }
         }
     }
 
-    private var isValidPrice: Bool {
-        guard let price = Double(priceText.replacingOccurrences(of: ",", with: ".")) else {
-            return false
+    private func checkCameraAndOpen() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            showCamera = true
+        case .notDetermined:
+            Task {
+                let granted = await AVCaptureDevice.requestAccess(for: .video)
+                if granted {
+                    showCamera = true
+                }
+            }
+        case .denied, .restricted:
+            showCameraPermissionAlert = true
+        @unknown default:
+            showCameraPermissionAlert = true
         }
-        return price > 0 && price < 20
+    }
+
+    private func extractPriceFromImage(_ image: UIImage) {
+        Task {
+            do {
+                let price = try await priceExtractionService.extractPrice(from: image)
+                if let price = price {
+                    extractedPrice = price
+                } else {
+                    errorMessage = "Could not find espresso price in the image. Please try again."
+                    showError = true
+                }
+            } catch {
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+        }
     }
 
     private func savePrice() {
-        guard let cafe = selectedCafe,
-              let price = Double(priceText.replacingOccurrences(of: ",", with: ".")) else {
+        guard let cafe = selectedCafe, let price = extractedPrice else {
             return
         }
 
@@ -140,8 +193,7 @@ struct AddPriceView: View {
         Task {
             do {
                 let cafeModel = Cafe.from(mapItem: cafe)
-                let noteText = note.isEmpty ? nil : note
-                _ = try await cloudKitManager.addOrUpdateCafe(cafeModel, price: price, note: noteText)
+                _ = try await cloudKitManager.addOrUpdateCafe(cafeModel, price: price, note: nil)
 
                 await MainActor.run {
                     isSaving = false
@@ -186,36 +238,79 @@ struct SelectedCafeHeader: View {
     }
 }
 
-/// Price input section with text field and optional note
-struct PriceInputSection: View {
-    @Binding var priceText: String
-    @Binding var note: String
-    var isPriceFocused: FocusState<Bool>.Binding
+/// Section for capturing and displaying price via camera
+struct PriceCaptureSection: View {
+    @Binding var extractedPrice: Double?
+    let isSignedIn: Bool
+    let isProcessing: Bool
+    let onSignIn: () -> Void
+    let onTakePhoto: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
-            // Price input
-            HStack {
-                Text("€")
-                    .font(.system(size: 40, weight: .medium))
-                    .foregroundColor(.secondary)
+        VStack(spacing: 20) {
+            if isProcessing {
+                // Loading state
+                VStack(spacing: 12) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                    Text("Extracting price...")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+            } else if let price = extractedPrice {
+                // Price found - display it
+                VStack(spacing: 8) {
+                    Text(String(format: "%.2f", price))
+                        .font(.system(size: 64, weight: .bold, design: .rounded))
 
-                TextField("0.00", text: $priceText)
-                    .font(.system(size: 48, weight: .bold, design: .rounded))
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.center)
-                    .focused(isPriceFocused)
-                    .accessibilityLabel("Espresso price in euros")
+                    Text("Espresso price detected")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+                .background(Color(.systemGray6))
+                .cornerRadius(16)
+
+                // Option to retake
+                Button {
+                    onTakePhoto()
+                } label: {
+                    Label("Take New Photo", systemImage: "camera")
+                        .font(.subheadline)
+                }
+            } else if !isSignedIn {
+                // Not signed in - show sign in button
+                VStack(spacing: 16) {
+                    Text("Sign in to capture prices")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+
+                    SignInWithAppleButton(.signIn) { _ in
+                    } onCompletion: { _ in
+                        onSignIn()
+                    }
+                    .signInWithAppleButtonStyle(.black)
+                    .frame(height: 50)
+                    .cornerRadius(8)
+                }
+                .padding(.vertical, 20)
+            } else {
+                // Signed in, ready to capture
+                Button {
+                    onTakePhoto()
+                } label: {
+                    Label("Take Photo of Menu", systemImage: "camera.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.accentColor)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                }
             }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(16)
-
-            // Optional note
-            TextField("Add a note (optional)", text: $note)
-                .textFieldStyle(.roundedBorder)
-                .accessibilityLabel("Optional note")
         }
     }
 }
@@ -279,7 +374,8 @@ struct CafeSelectionList: View {
                 if newValue.isEmpty {
                     await cafeSearchService.searchNearbyCafes(at: locationManager.currentCoordinate)
                 } else {
-                    await cafeSearchService.searchCafes(query: newValue, near: locationManager.currentCoordinate)
+                    await cafeSearchService.searchCafes(
+                        query: newValue, near: locationManager.currentCoordinate)
                 }
             }
         }
@@ -319,7 +415,8 @@ struct CafeRow: View {
 
     private var formattedDistance: String? {
         let cafeLocation = CLLocation(latitude: cafe.latitude, longitude: cafe.longitude)
-        let userLocation = CLLocation(latitude: currentLocation.latitude, longitude: currentLocation.longitude)
+        let userLocation = CLLocation(
+            latitude: currentLocation.latitude, longitude: currentLocation.longitude)
         let distance = userLocation.distance(from: cafeLocation)
 
         if distance < 1000 {
