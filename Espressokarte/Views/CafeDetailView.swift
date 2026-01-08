@@ -503,13 +503,18 @@ struct UpdatePriceCaptureSection: View {
                         .font(.headline)
                         .foregroundColor(.secondary)
 
-                    SignInWithAppleButton(.signIn) { _ in
-                    } onCompletion: { _ in
-                        onSignIn()
+                    Button(action: onSignIn) {
+                        HStack {
+                            Image(systemName: "applelogo")
+                            Text("Sign in with Apple")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color.black)
+                        .cornerRadius(8)
                     }
-                    .signInWithAppleButtonStyle(.black)
-                    .frame(height: 50)
-                    .cornerRadius(8)
                 }
                 .padding(.vertical, 20)
             } else {

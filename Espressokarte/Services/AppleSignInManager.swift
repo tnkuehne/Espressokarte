@@ -21,6 +21,9 @@ final class AppleSignInManager: NSObject, ObservableObject {
 
     private let tokenKey = "com.espressokarte.appleIdentityToken"
     private let userIdKey = "com.espressokarte.appleUserIdentifier"
+    private let userNameKey = "com.espressokarte.appleUserName"
+
+    @Published private(set) var userName: String?
 
     private var signInContinuation: CheckedContinuation<String, Error>?
 
@@ -57,6 +60,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
             case .authorized:
                 if getStoredToken() != nil {
                     userIdentifier = userId
+                    userName = UserDefaults.standard.string(forKey: userNameKey)
                     isSignedIn = true
                 } else {
                     isSignedIn = false
@@ -78,7 +82,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
     /// Perform Sign in with Apple
     func signIn() async throws -> String {
         let request = ASAuthorizationAppleIDProvider().createRequest()
-        request.requestedScopes = [.email]
+        request.requestedScopes = [.fullName, .email]
 
         let controller = ASAuthorizationController(authorizationRequests: [request])
         controller.delegate = self
@@ -94,6 +98,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
         clearCredentials()
         isSignedIn = false
         userIdentifier = nil
+        userName = nil
     }
 
     // MARK: - Private Helpers
@@ -149,6 +154,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
 
         // Clear UserDefaults
         UserDefaults.standard.removeObject(forKey: userIdKey)
+        UserDefaults.standard.removeObject(forKey: userNameKey)
     }
 }
 
@@ -172,6 +178,30 @@ extension AppleSignInManager: ASAuthorizationControllerDelegate {
             // Store credentials
             storeToken(identityToken)
             UserDefaults.standard.set(credential.user, forKey: userIdKey)
+
+            // Store full name if provided (only available on first sign-in)
+            print("DEBUG: credential.fullName = \(String(describing: credential.fullName))")
+            print("DEBUG: givenName = \(String(describing: credential.fullName?.givenName))")
+            print("DEBUG: familyName = \(String(describing: credential.fullName?.familyName))")
+
+            if let fullName = credential.fullName {
+                let givenName = fullName.givenName ?? ""
+                let familyName = fullName.familyName ?? ""
+                let displayName = [givenName, familyName]
+                    .filter { !$0.isEmpty }
+                    .joined(separator: " ")
+                print("DEBUG: displayName = '\(displayName)'")
+                if !displayName.isEmpty {
+                    UserDefaults.standard.set(displayName, forKey: userNameKey)
+                    userName = displayName
+                    print("DEBUG: Stored userName = \(displayName)")
+                }
+            }
+
+            // Load stored name if not set from this sign-in
+            if userName == nil {
+                userName = UserDefaults.standard.string(forKey: userNameKey)
+            }
 
             userIdentifier = credential.user
             isSignedIn = true

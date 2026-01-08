@@ -5,18 +5,23 @@
 //  Created by Timo Kuehne on 07.01.26.
 //
 
-import Foundation
 import CloudKit
 import Combine
+import Foundation
 
 /// CloudKit-specific errors
 enum CloudKitError: LocalizedError {
     case notSignedIn
+    case noUserName
 
     var errorDescription: String? {
         switch self {
         case .notSignedIn:
-            return "You must be signed into iCloud to add prices. Please sign in via Settings > Apple Account > iCloud."
+            return
+                "You must be signed into iCloud to add prices. Please sign in via Settings > Apple Account > iCloud."
+        case .noUserName:
+            return
+                "Could not get your name. Please go to Settings > Apple Account > Sign-In & Security > Sign in with Apple > Espressokarte > Stop Using Apple ID, then sign in again in the app."
         }
     }
 }
@@ -56,14 +61,12 @@ final class CloudKitManager: ObservableObject {
             let userRecordID = try await container.userRecordID()
             currentUserRecordID = userRecordID.recordName
 
-            // Use a short identifier from the record name for display
-            let shortId = String(userRecordID.recordName.prefix(8))
-            currentUserName = "User-\(shortId)"
+            if let userName = AppleSignInManager.shared.userName {
+                currentUserName = userName
+            }
         } catch {
-            // This is a real error - user must be signed into iCloud
             self.error = error
             print("ERROR: Failed to get user identity. Is iCloud signed in? Error: \(error)")
-            currentUserName = "Not signed in"
             currentUserRecordID = ""
         }
     }
@@ -167,6 +170,12 @@ final class CloudKitManager: ObservableObject {
             throw CloudKitError.notSignedIn
         }
 
+        // Get the user name from Apple Sign In
+        guard let userName = AppleSignInManager.shared.userName else {
+            throw CloudKitError.noUserName
+        }
+        currentUserName = userName
+
         // Check if cafe already exists
         let existingRecord = try? await fetchCafeRecord(id: cafe.id)
 
@@ -175,7 +184,8 @@ final class CloudKitManager: ObservableObject {
             cafeRecord = existing
         } else {
             // Create new cafe record
-            cafeRecord = CKRecord(recordType: cafeRecordType, recordID: CKRecord.ID(recordName: cafe.id))
+            cafeRecord = CKRecord(
+                recordType: cafeRecordType, recordID: CKRecord.ID(recordName: cafe.id))
             cafeRecord["cafeId"] = cafe.id
             cafeRecord["name"] = cafe.name
             cafeRecord["address"] = cafe.address
@@ -197,7 +207,8 @@ final class CloudKitManager: ObservableObject {
         priceRecord["addedBy"] = currentUserRecordID
         priceRecord["addedByName"] = currentUserName
         priceRecord["note"] = note
-        priceRecord["cafeReference"] = CKRecord.Reference(recordID: cafeRecord.recordID, action: .deleteSelf)
+        priceRecord["cafeReference"] = CKRecord.Reference(
+            recordID: cafeRecord.recordID, action: .deleteSelf)
 
         try await publicDatabase.save(priceRecord)
 
@@ -236,10 +247,11 @@ final class CloudKitManager: ObservableObject {
     /// Converts a CKRecord to a Cafe model
     private func cafeFrom(record: CKRecord) async -> Cafe? {
         guard let cafeId = record["cafeId"] as? String,
-              let name = record["name"] as? String,
-              let address = record["address"] as? String,
-              let latitude = record["latitude"] as? Double,
-              let longitude = record["longitude"] as? Double else {
+            let name = record["name"] as? String,
+            let address = record["address"] as? String,
+            let latitude = record["latitude"] as? Double,
+            let longitude = record["longitude"] as? Double
+        else {
             return nil
         }
 
@@ -260,9 +272,10 @@ final class CloudKitManager: ObservableObject {
     /// Converts a CKRecord to a PriceRecord model
     private func priceRecordFrom(record: CKRecord) -> PriceRecord? {
         guard let price = record["price"] as? Double,
-              let date = record["date"] as? Date,
-              let addedBy = record["addedBy"] as? String,
-              let addedByName = record["addedByName"] as? String else {
+            let date = record["date"] as? Date,
+            let addedBy = record["addedBy"] as? String,
+            let addedByName = record["addedByName"] as? String
+        else {
             return nil
         }
 
