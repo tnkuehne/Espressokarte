@@ -67,7 +67,7 @@ async function verifyAppleToken(token: string, bundleId: string): Promise<AppleT
 		}
 
 		if (payload.aud !== bundleId) {
-			console.error('Invalid audience');
+			console.error('Invalid audience: ', payload.aud);
 			return null;
 		}
 
