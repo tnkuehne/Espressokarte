@@ -5,8 +5,9 @@
 //  Created by Timo Kuehne on 07.01.26.
 //
 
-import Testing
 import CoreLocation
+import Testing
+
 @testable import Espressokarte
 
 // MARK: - Cafe Model Tests
@@ -314,7 +315,7 @@ struct LocalCacheManagerTests {
                 latitude: 48.1371,
                 longitude: 11.5754,
                 currentPrice: 3.00
-            )
+            ),
         ]
 
         // Cache cafes
@@ -378,19 +379,6 @@ struct LocalCacheManagerTests {
 
         let cafes = cacheManager.loadCachedCafes()
         #expect(cafes.isEmpty)
-    }
-}
-
-// MARK: - Location Tests
-
-struct LocationTests {
-
-    @Test func defaultLocationIsMunich() {
-        let defaultLocation = LocationManager.defaultLocation
-
-        // Munich city center coordinates (approximately)
-        #expect(defaultLocation.latitude > 48.0 && defaultLocation.latitude < 48.3)
-        #expect(defaultLocation.longitude > 11.4 && defaultLocation.longitude < 11.8)
     }
 }
 

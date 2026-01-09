@@ -121,12 +121,15 @@ struct AddPriceView: View {
 
             // Wait a moment for location, then search
             try? await Task.sleep(for: .milliseconds(500))
-            await cafeSearchService.searchNearbyCafes(at: locationManager.currentCoordinate)
+
+            guard let coordinate = locationManager.currentCoordinate else { return }
+
+            await cafeSearchService.searchNearbyCafes(at: coordinate)
 
             // Auto-select closest cafe if very close and within range
-            if let closest = cafeSearchService.closestCafe(to: locationManager.currentCoordinate) {
+            if let closest = cafeSearchService.closestCafe(to: coordinate) {
                 let distance = cafeSearchService.distance(
-                    from: locationManager.currentCoordinate,
+                    from: coordinate,
                     to: closest.coordinate
                 )
                 // Auto-select if within 30 meters (and implicitly within price update range)
@@ -384,11 +387,12 @@ struct CafeSelectionList: View {
         }
         .onChange(of: searchQuery) { _, newValue in
             Task {
+                guard let coordinate = locationManager.currentCoordinate else { return }
+
                 if newValue.isEmpty {
-                    await cafeSearchService.searchNearbyCafes(at: locationManager.currentCoordinate)
+                    await cafeSearchService.searchNearbyCafes(at: coordinate)
                 } else {
-                    await cafeSearchService.searchCafes(
-                        query: newValue, near: locationManager.currentCoordinate)
+                    await cafeSearchService.searchCafes(query: newValue, near: coordinate)
                 }
             }
         }
@@ -398,7 +402,7 @@ struct CafeSelectionList: View {
 /// Row displaying a cafe in the selection list
 struct CafeRow: View {
     let cafe: MapItemData
-    let currentLocation: CLLocationCoordinate2D
+    let currentLocation: CLLocationCoordinate2D?
     let isWithinRange: Bool
 
     var body: some View {
@@ -436,6 +440,8 @@ struct CafeRow: View {
     }
 
     private var formattedDistance: String? {
+        guard let currentLocation else { return nil }
+
         let cafeLocation = CLLocation(latitude: cafe.latitude, longitude: cafe.longitude)
         let userLocation = CLLocation(
             latitude: currentLocation.latitude, longitude: currentLocation.longitude)

@@ -20,12 +20,9 @@ final class LocationManager: NSObject, ObservableObject {
     @Published private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published private(set) var error: Error?
 
-    /// Default location (Munich city center) when location is unavailable
-    static let defaultLocation = CLLocationCoordinate2D(latitude: 48.1351, longitude: 11.5820)
-
-    /// Current coordinate or default
-    var currentCoordinate: CLLocationCoordinate2D {
-        currentLocation?.coordinate ?? Self.defaultLocation
+    /// Current coordinate if available
+    var currentCoordinate: CLLocationCoordinate2D? {
+        currentLocation?.coordinate
     }
 
     private override init() {
