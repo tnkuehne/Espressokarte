@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		25EEC81A2F102A750073CDCA /* cafe-lehel.gpx in Resources */ = {isa = PBXBuildFile; fileRef = 25EEC8192F102A750073CDCA /* cafe-lehel.gpx */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		2544F39D2F0EAE910045FBEB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		2544F38B2F0EAE8F0045FBEB /* Espressokarte.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Espressokarte.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2544F39C2F0EAE910045FBEB /* EspressokarteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EspressokarteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2544F3A62F0EAE910045FBEB /* EspressokarteUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EspressokarteUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		25EEC8192F102A750073CDCA /* cafe-lehel.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "cafe-lehel.gpx"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -92,6 +97,7 @@
 				2544F39F2F0EAE910045FBEB /* EspressokarteTests */,
 				2544F3A92F0EAE910045FBEB /* EspressokarteUITests */,
 				2544F38C2F0EAE8F0045FBEB /* Products */,
+				25EEC8192F102A750073CDCA /* cafe-lehel.gpx */,
 			);
 			sourceTree = "<group>";
 		};
@@ -225,6 +231,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				25EEC81A2F102A750073CDCA /* cafe-lehel.gpx in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
