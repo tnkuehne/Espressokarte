@@ -123,14 +123,15 @@ struct AddPriceView: View {
             try? await Task.sleep(for: .milliseconds(500))
             await cafeSearchService.searchNearbyCafes(at: locationManager.currentCoordinate)
 
-            // Auto-select closest cafe if very close
+            // Auto-select closest cafe if very close and within range
             if let closest = cafeSearchService.closestCafe(to: locationManager.currentCoordinate) {
                 let distance = cafeSearchService.distance(
                     from: locationManager.currentCoordinate,
                     to: closest.coordinate
                 )
-                // Auto-select if within 30 meters
-                if distance < 30 {
+                // Auto-select if within 30 meters (and implicitly within price update range)
+                if distance < 30 && locationManager.isWithinPriceUpdateRange(of: closest.coordinate)
+                {
                     selectedCafe = closest
                 }
             }
@@ -363,13 +364,20 @@ struct CafeSelectionList: View {
                 )
             } else {
                 List(cafeSearchService.nearbyCafes) { cafe in
-                    CafeRow(cafe: cafe, currentLocation: locationManager.currentCoordinate)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
+                    let isWithinRange = locationManager.isWithinPriceUpdateRange(
+                        of: cafe.coordinate)
+                    CafeRow(
+                        cafe: cafe, currentLocation: locationManager.currentCoordinate,
+                        isWithinRange: isWithinRange
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if isWithinRange {
                             withAnimation {
                                 selectedCafe = cafe
                             }
                         }
+                    }
                 }
                 .listStyle(.plain)
             }
@@ -391,12 +399,14 @@ struct CafeSelectionList: View {
 struct CafeRow: View {
     let cafe: MapItemData
     let currentLocation: CLLocationCoordinate2D
+    let isWithinRange: Bool
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(cafe.name)
                     .font(.headline)
+                    .foregroundColor(isWithinRange ? .primary : .secondary)
                 Text(cafe.address)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -408,14 +418,21 @@ struct CafeRow: View {
             if let distance = formattedDistance {
                 Text(distance)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(isWithinRange ? .blue : .secondary)
             }
 
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            if isWithinRange {
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                Image(systemName: "location.slash")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
         }
         .padding(.vertical, 4)
+        .opacity(isWithinRange ? 1.0 : 0.6)
     }
 
     private var formattedDistance: String? {

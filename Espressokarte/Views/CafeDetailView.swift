@@ -51,18 +51,26 @@ struct CafeDetailView: View {
                         PriceHistorySection(priceHistory: cafe.priceHistory)
                     }
 
-                    // Update price button
-                    Button(action: { showUpdatePrice = true }) {
-                        Label("Update Price", systemImage: "pencil")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
+                    // Update price button - only enabled when user is at the cafe
+                    VStack(spacing: 8) {
+                        if locationManager.isWithinPriceUpdateRange(of: cafe.coordinate) {
+                            Button(action: { showUpdatePrice = true }) {
+                                Label("Update Price", systemImage: "pencil")
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(.blue)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(12)
+                            }
+                            .accessibilityLabel("Update espresso price")
+                        } else {
+                            Label("Visit cafe to update price", systemImage: "location.fill")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
                     }
                     .padding(.horizontal)
-                    .accessibilityLabel("Update espresso price")
                 }
                 .padding(.bottom, 20)
             }

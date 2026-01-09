@@ -5,9 +5,9 @@
 //  Created by Timo Kuehne on 07.01.26.
 //
 
-import Foundation
-import CoreLocation
 import Combine
+import CoreLocation
+import Foundation
 
 /// Manages user location services
 @MainActor
@@ -58,7 +58,8 @@ final class LocationManager: NSObject, ObservableObject {
     /// Calculates distance from current location to a coordinate
     func distance(to coordinate: CLLocationCoordinate2D) -> CLLocationDistance? {
         guard let currentLocation = currentLocation else { return nil }
-        let targetLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let targetLocation = CLLocation(
+            latitude: coordinate.latitude, longitude: coordinate.longitude)
         return currentLocation.distance(from: targetLocation)
     }
 
@@ -72,12 +73,24 @@ final class LocationManager: NSObject, ObservableObject {
             return String(format: "%.1f km", distance / 1000)
         }
     }
+
+    /// Maximum distance (in meters) to allow adding/updating prices
+    /// Allows for GPS inaccuracy margin
+    static let maxPriceUpdateDistance: CLLocationDistance = 100
+
+    /// Checks if user is within range to update a cafe's price
+    func isWithinPriceUpdateRange(of coordinate: CLLocationCoordinate2D) -> Bool {
+        guard let distance = distance(to: coordinate) else { return false }
+        return distance <= Self.maxPriceUpdateDistance
+    }
 }
 
 // MARK: - CLLocationManagerDelegate
 
 extension LocationManager: CLLocationManagerDelegate {
-    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    nonisolated func locationManager(
+        _ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]
+    ) {
         Task { @MainActor in
             self.currentLocation = locations.last
             self.error = nil
