@@ -7,8 +7,52 @@
 
 import Foundation
 
+/// Price validation error
+enum PriceValidationError: LocalizedError {
+    case tooLow
+    case tooHigh
+    case invalid
+
+    var errorDescription: String? {
+        switch self {
+        case .tooLow:
+            return "Price seems too low. Espresso prices are typically at least €0.50."
+        case .tooHigh:
+            return "Price seems too high. Please check the price and try again."
+        case .invalid:
+            return "Please enter a valid price."
+        }
+    }
+}
+
 /// A single price entry for a cafe
 struct PriceRecord: Identifiable, Codable, Hashable {
+
+    /// Valid price range for espresso (in euros)
+    static let minimumPrice: Double = 0.50
+    static let maximumPrice: Double = 15.00
+
+    /// Validates a price and returns an error if invalid
+    static func validate(price: Double) -> PriceValidationError? {
+        guard price.isFinite && !price.isNaN else {
+            return .invalid
+        }
+
+        if price < minimumPrice {
+            return .tooLow
+        }
+
+        if price > maximumPrice {
+            return .tooHigh
+        }
+
+        return nil
+    }
+
+    /// Returns true if the price is within valid range
+    static func isValid(price: Double) -> Bool {
+        validate(price: price) == nil
+    }
     /// Unique identifier for this price record
     let id: String
 

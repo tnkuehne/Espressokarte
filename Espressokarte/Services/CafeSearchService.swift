@@ -5,9 +5,9 @@
 //  Created by Timo Kuehne on 07.01.26.
 //
 
+import Combine
 import Foundation
 import MapKit
-import Combine
 
 /// Service for searching cafes using MapKit
 @MainActor
@@ -21,7 +21,9 @@ final class CafeSearchService: ObservableObject {
     private init() {}
 
     /// Searches for nearby cafes at the given location
-    func searchNearbyCafes(at coordinate: CLLocationCoordinate2D, radius: CLLocationDistance = 200) async {
+    func searchNearbyCafes(at coordinate: CLLocationCoordinate2D, radius: CLLocationDistance = 200)
+        async
+    {
         isSearching = true
         error = nil
 
@@ -56,14 +58,16 @@ final class CafeSearchService: ObservableObject {
                 return MapItemData(
                     id: id,
                     name: name,
-                    address: formatAddress(mapItem),
+                    address: mapItem.addressRepresentations!.fullAddress(
+                        includingRegion: false, singleLine: true)!,
                     latitude: location.coordinate.latitude,
                     longitude: location.coordinate.longitude
                 )
             }
 
             // Sort by distance from search location
-            let searchLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            let searchLocation = CLLocation(
+                latitude: coordinate.latitude, longitude: coordinate.longitude)
             let sortedCafes = cafes.sorted { cafe1, cafe2 in
                 let loc1 = CLLocation(latitude: cafe1.latitude, longitude: cafe1.longitude)
                 let loc2 = CLLocation(latitude: cafe2.latitude, longitude: cafe2.longitude)
@@ -119,7 +123,8 @@ final class CafeSearchService: ObservableObject {
                 return MapItemData(
                     id: id,
                     name: name,
-                    address: formatAddress(mapItem),
+                    address: mapItem.addressRepresentations!.fullAddress(
+                        includingRegion: false, singleLine: true)!,
                     latitude: location.coordinate.latitude,
                     longitude: location.coordinate.longitude
                 )
@@ -132,13 +137,6 @@ final class CafeSearchService: ObservableObject {
         }
 
         isSearching = false
-    }
-
-    /// Formats a map item into a readable address
-    private func formatAddress(_ mapItem: MKMapItem) -> String {
-        // Simply return Munich as the default location
-        // The cafe name provides the main identification
-        return "Munich"
     }
 
     /// Returns the closest cafe to the given coordinate

@@ -490,30 +490,67 @@ struct CodingTests {
 struct PriceValidationTests {
 
     @Test func validPriceRange() {
-        // Test various price points
-        let validPrices: [Double] = [0.50, 1.00, 1.50, 2.00, 2.50, 3.00, 4.00, 5.00]
+        // Test various valid price points
+        let validPrices: [Double] = [0.50, 1.00, 1.50, 2.00, 2.50, 3.00, 4.00, 5.00, 10.00, 15.00]
 
         for price in validPrices {
-            let isValid = price > 0 && price < 20
-            #expect(isValid == true, "Price \(price) should be valid")
+            #expect(PriceRecord.isValid(price: price) == true, "Price \(price) should be valid")
+            #expect(PriceRecord.validate(price: price) == nil, "Price \(price) should have no validation error")
         }
     }
 
     @Test func invalidPriceZero() {
         let price = 0.0
-        let isValid = price > 0 && price < 20
-        #expect(isValid == false)
+        #expect(PriceRecord.isValid(price: price) == false)
+        #expect(PriceRecord.validate(price: price) == .tooLow)
     }
 
     @Test func invalidPriceNegative() {
         let price = -1.0
-        let isValid = price > 0 && price < 20
-        #expect(isValid == false)
+        #expect(PriceRecord.isValid(price: price) == false)
+        #expect(PriceRecord.validate(price: price) == .tooLow)
+    }
+
+    @Test func invalidPriceTooLow() {
+        let price = 0.49
+        #expect(PriceRecord.isValid(price: price) == false)
+        #expect(PriceRecord.validate(price: price) == .tooLow)
     }
 
     @Test func invalidPriceTooHigh() {
-        let price = 25.0
-        let isValid = price > 0 && price < 20
-        #expect(isValid == false)
+        let price = 15.01
+        #expect(PriceRecord.isValid(price: price) == false)
+        #expect(PriceRecord.validate(price: price) == .tooHigh)
+    }
+
+    @Test func invalidPriceExtreme() {
+        #expect(PriceRecord.validate(price: 999.0) == .tooHigh)
+        #expect(PriceRecord.validate(price: 0.01) == .tooLow)
+    }
+
+    @Test func invalidPriceNaN() {
+        #expect(PriceRecord.validate(price: Double.nan) == .invalid)
+        #expect(PriceRecord.isValid(price: Double.nan) == false)
+    }
+
+    @Test func invalidPriceInfinity() {
+        #expect(PriceRecord.validate(price: Double.infinity) == .invalid)
+        #expect(PriceRecord.isValid(price: Double.infinity) == false)
+    }
+
+    @Test func priceAtBoundaries() {
+        // Minimum boundary
+        #expect(PriceRecord.isValid(price: PriceRecord.minimumPrice) == true)
+        #expect(PriceRecord.isValid(price: PriceRecord.minimumPrice - 0.01) == false)
+
+        // Maximum boundary
+        #expect(PriceRecord.isValid(price: PriceRecord.maximumPrice) == true)
+        #expect(PriceRecord.isValid(price: PriceRecord.maximumPrice + 0.01) == false)
+    }
+
+    @Test func validationErrorMessages() {
+        #expect(PriceValidationError.tooLow.errorDescription != nil)
+        #expect(PriceValidationError.tooHigh.errorDescription != nil)
+        #expect(PriceValidationError.invalid.errorDescription != nil)
     }
 }

@@ -13,6 +13,7 @@ import Foundation
 enum CloudKitError: LocalizedError {
     case notSignedIn
     case noUserName
+    case invalidPrice(PriceValidationError)
 
     var errorDescription: String? {
         switch self {
@@ -22,6 +23,8 @@ enum CloudKitError: LocalizedError {
         case .noUserName:
             return
                 "Could not get your name. Please go to Settings > Apple Account > Sign-In & Security > Sign in with Apple > Espressokarte > Stop Using Apple ID, then sign in again in the app."
+        case .invalidPrice(let validationError):
+            return validationError.errorDescription
         }
     }
 }
@@ -174,6 +177,11 @@ final class CloudKitManager: ObservableObject {
     func addOrUpdateCafe(_ cafe: Cafe, price: Double, note: String?, menuImageData: Data? = nil)
         async throws -> Cafe
     {
+        // Validate price before proceeding
+        if let validationError = PriceRecord.validate(price: price) {
+            throw CloudKitError.invalidPrice(validationError)
+        }
+
         // Ensure we have a user ID
         if currentUserRecordID.isEmpty {
             await fetchUserIdentity()

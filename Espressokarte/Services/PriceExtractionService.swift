@@ -69,6 +69,9 @@ final class PriceExtractionService: ObservableObject {
             // Token expired or invalid - clear and require re-auth
             appleSignInManager.signOut()
             throw PriceExtractionError.authenticationFailed
+        case 429:
+            // Rate limit exceeded
+            throw PriceExtractionError.rateLimitExceeded
         default:
             // Try to parse error message
             if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
@@ -117,6 +120,7 @@ enum PriceExtractionError: LocalizedError {
     case imageConversionFailed
     case invalidResponse
     case authenticationFailed
+    case rateLimitExceeded
     case serverError(String)
     case networkError(Error)
 
@@ -128,6 +132,8 @@ enum PriceExtractionError: LocalizedError {
             return "Received invalid response from server."
         case .authenticationFailed:
             return "Authentication failed. Please sign in again."
+        case .rateLimitExceeded:
+            return "Too many requests. Please wait a minute before trying again."
         case .serverError(let message):
             return message
         case .networkError(let error):
