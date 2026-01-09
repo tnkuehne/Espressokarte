@@ -51,6 +51,12 @@ final class CloudKitManager: ObservableObject {
     private init() {
         self.container = CKContainer.default()
         self.publicDatabase = container.publicCloudDatabase
+
+        // Load cached cafes immediately for instant display
+        self.cafes = LocalCacheManager.shared.loadCachedCafes()
+        if !self.cafes.isEmpty {
+            self.hasCreatedSchema = true
+        }
     }
 
     // MARK: - User Identity
@@ -75,7 +81,11 @@ final class CloudKitManager: ObservableObject {
 
     /// Fetches all cafes with their price records from CloudKit
     func fetchAllCafes() async {
-        isLoading = true
+        // Only show loading indicator if we have no cached data
+        let hasCachedData = !cafes.isEmpty
+        if !hasCachedData {
+            isLoading = true
+        }
         error = nil
 
         do {
@@ -111,17 +121,19 @@ final class CloudKitManager: ObservableObject {
             // "Unknown Item" means no records exist yet - this is normal for a fresh database
             if ckError.code == .unknownItem {
                 print("No cafes in CloudKit yet. Add your first cafe!")
-                self.cafes = []
+                // Only clear cafes if we don't have cached data
+                if !hasCachedData {
+                    self.cafes = []
+                }
             } else {
-                // Real CloudKit error - surface it
+                // Real CloudKit error - surface it, but keep cached data
                 self.error = ckError
                 print("CloudKit error: \(ckError)")
-                self.cafes = LocalCacheManager.shared.loadCachedCafes()
             }
         } catch {
             self.error = error
-            // Load from cache if network fails
-            self.cafes = LocalCacheManager.shared.loadCachedCafes()
+            print("Network error, using cached data: \(error)")
+            // Keep existing cached data on network failure
         }
 
         isLoading = false
