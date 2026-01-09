@@ -14,6 +14,8 @@ import SwiftUI
 struct AddPriceView: View {
     @Environment(\.dismiss) private var dismiss
 
+    var onPriceSaved: (() -> Void)?
+
     @StateObject private var locationManager = LocationManager.shared
     @StateObject private var cafeSearchService = CafeSearchService.shared
     @StateObject private var cloudKitManager = CloudKitManager.shared
@@ -201,6 +203,7 @@ struct AddPriceView: View {
 
                 await MainActor.run {
                     isSaving = false
+                    onPriceSaved?()
                     dismiss()
                 }
             } catch {

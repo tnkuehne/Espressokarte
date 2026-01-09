@@ -17,6 +17,7 @@ struct MapView: View {
     @State private var selectedCafe: Cafe?
     @State private var showAddPrice = false
     @State private var showCafeDetail = false
+    @State private var shouldRefreshAfterAdd = false
 
     var body: some View {
         ZStack {
@@ -85,11 +86,14 @@ struct MapView: View {
             }
         }
         .sheet(isPresented: $showAddPrice) {
-            AddPriceView()
+            AddPriceView(onPriceSaved: {
+                shouldRefreshAfterAdd = true
+            })
         }
         .onChange(of: showAddPrice) { _, isShowing in
-            if !isShowing {
-                // Refresh cafes when add price sheet is dismissed
+            if !isShowing && shouldRefreshAfterAdd {
+                // Refresh cafes only when a price was actually saved
+                shouldRefreshAfterAdd = false
                 Task {
                     await cloudKitManager.fetchAllCafes()
                 }
