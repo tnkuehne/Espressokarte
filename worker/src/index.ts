@@ -4,6 +4,11 @@ import { z } from 'zod/v4';
 export interface Env {
 	GEMINI_API_KEY: string;
 	APPLE_APP_BUNDLE_ID: string;
+	PRICE_EXTRACTION_LIMITER: RateLimit;
+}
+
+interface RateLimit {
+	limit(options: { key: string }): Promise<{ success: boolean }>;
 }
 
 interface AppleTokenPayload {
@@ -175,6 +180,28 @@ export default {
 					status: 401,
 					headers: { ...corsHeaders, 'Content-Type': 'application/json' },
 				});
+			}
+
+			// Rate limiting: 10 requests per minute per user
+			const { success: rateLimitSuccess } = await env.PRICE_EXTRACTION_LIMITER.limit({
+				key: appleUser.sub, // Rate limit by user ID
+			});
+
+			if (!rateLimitSuccess) {
+				return new Response(
+					JSON.stringify({
+						error: 'Rate limit exceeded',
+						message: 'Too many requests. Please wait a minute before trying again.',
+					}),
+					{
+						status: 429,
+						headers: {
+							...corsHeaders,
+							'Content-Type': 'application/json',
+							'Retry-After': '60',
+						},
+					},
+				);
 			}
 
 			const body: RequestBody = await request.json();
