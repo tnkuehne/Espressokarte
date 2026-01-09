@@ -27,6 +27,9 @@ struct PriceRecord: Identifiable, Codable, Hashable {
     /// Optional note about this price
     let note: String?
 
+    /// Optional menu image data (JPEG compressed)
+    let menuImageData: Data?
+
     /// Formatted price string
     var formattedPrice: String {
         String(format: "€%.2f", price)
@@ -53,7 +56,8 @@ struct PriceRecord: Identifiable, Codable, Hashable {
         date: Date = Date(),
         addedBy: String,
         addedByName: String,
-        note: String? = nil
+        note: String? = nil,
+        menuImageData: Data? = nil
     ) {
         self.id = id
         self.price = price
@@ -61,5 +65,6 @@ struct PriceRecord: Identifiable, Codable, Hashable {
         self.addedBy = addedBy
         self.addedByName = addedByName
         self.note = note
+        self.menuImageData = menuImageData
     }
 }

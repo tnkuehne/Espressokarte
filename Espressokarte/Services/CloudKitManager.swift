@@ -159,7 +159,9 @@ final class CloudKitManager: ObservableObject {
     // MARK: - Adding/Updating Data
 
     /// Adds a new cafe or updates an existing one with a new price
-    func addOrUpdateCafe(_ cafe: Cafe, price: Double, note: String?) async throws -> Cafe {
+    func addOrUpdateCafe(_ cafe: Cafe, price: Double, note: String?, menuImageData: Data? = nil)
+        async throws -> Cafe
+    {
         // Ensure we have a user ID
         if currentUserRecordID.isEmpty {
             await fetchUserIdentity()
@@ -210,7 +212,20 @@ final class CloudKitManager: ObservableObject {
         priceRecord["cafeReference"] = CKRecord.Reference(
             recordID: cafeRecord.recordID, action: .deleteSelf)
 
-        try await publicDatabase.save(priceRecord)
+        // Save menu image as CKAsset if provided
+        if let imageData = menuImageData {
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(
+                UUID().uuidString + ".jpg")
+            try imageData.write(to: tempURL)
+            priceRecord["menuImage"] = CKAsset(fileURL: tempURL)
+
+            try await publicDatabase.save(priceRecord)
+
+            // Clean up temp file
+            try? FileManager.default.removeItem(at: tempURL)
+        } else {
+            try await publicDatabase.save(priceRecord)
+        }
 
         // Schema is now created, set up subscription
         if !hasCreatedSchema {
@@ -281,13 +296,22 @@ final class CloudKitManager: ObservableObject {
 
         let note = record["note"] as? String
 
+        // Load menu image data from CKAsset if present
+        var menuImageData: Data?
+        if let asset = record["menuImage"] as? CKAsset,
+            let fileURL = asset.fileURL
+        {
+            menuImageData = try? Data(contentsOf: fileURL)
+        }
+
         return PriceRecord(
             id: record.recordID.recordName,
             price: price,
             date: date,
             addedBy: addedBy,
             addedByName: addedByName,
-            note: note
+            note: note,
+            menuImageData: menuImageData
         )
     }
 

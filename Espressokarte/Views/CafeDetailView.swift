@@ -303,6 +303,7 @@ struct UpdatePriceView: View {
     @StateObject private var priceExtractionService = PriceExtractionService.shared
 
     @State private var extractedPrice: Double?
+    @State private var capturedImage: UIImage?
     @State private var isSaving = false
     @State private var showError = false
     @State private var errorMessage = ""
@@ -424,6 +425,7 @@ struct UpdatePriceView: View {
                 let price = try await priceExtractionService.extractPrice(from: image)
                 if let price = price {
                     extractedPrice = price
+                    capturedImage = image
                 } else {
                     errorMessage = "Could not find espresso price in the image. Please try again."
                     showError = true
@@ -442,8 +444,10 @@ struct UpdatePriceView: View {
 
         Task {
             do {
+                // Compress image to JPEG for storage
+                let imageData = capturedImage?.jpegData(compressionQuality: 0.7)
                 let updatedCafe = try await cloudKitManager.addOrUpdateCafe(
-                    cafe, price: price, note: nil)
+                    cafe, price: price, note: nil, menuImageData: imageData)
 
                 await MainActor.run {
                     isSaving = false
