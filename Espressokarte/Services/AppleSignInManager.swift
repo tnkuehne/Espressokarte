@@ -49,12 +49,8 @@ final class AppleSignInManager: NSObject, ObservableObject {
     /// Check if user has valid stored credentials
     func checkExistingCredentials() async {
         let sharedDefaults = UserDefaults(suiteName: accessGroup)
-        // Try shared container first, fall back to standard for migration
-        let userId =
-            sharedDefaults?.string(forKey: userIdKey)
-            ?? UserDefaults.standard.string(forKey: userIdKey)
 
-        guard let userId else {
+        guard let userId = sharedDefaults?.string(forKey: userIdKey) else {
             isSignedIn = false
             return
         }
@@ -67,9 +63,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
             case .authorized:
                 if getStoredToken() != nil {
                     userIdentifier = userId
-                    userName =
-                        sharedDefaults?.string(forKey: userNameKey)
-                        ?? UserDefaults.standard.string(forKey: userNameKey)
+                    userName = sharedDefaults?.string(forKey: userNameKey)
                     isSignedIn = true
                 } else {
                     isSignedIn = false

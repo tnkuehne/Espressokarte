@@ -358,10 +358,28 @@ final class ShareExtensionViewModel: ObservableObject {
         // Create price record
         let priceRecordID = CKRecord.ID(recordName: UUID().uuidString)
         let priceRecord = CKRecord(recordType: "PriceRecord", recordID: priceRecordID)
+        guard let userRecordID = getUserRecordID() else {
+            throw NSError(
+                domain: "ShareExtension", code: 10,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "User ID not found. Please sign out and sign in again in the main app."
+                ])
+        }
+
+        guard let userName = getUserName() else {
+            throw NSError(
+                domain: "ShareExtension", code: 11,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "User name not found. Please sign out and sign in again in the main app."
+                ])
+        }
+
         priceRecord["price"] = price
         priceRecord["date"] = Date()
-        priceRecord["addedBy"] = getUserRecordID() ?? "unknown"
-        priceRecord["addedByName"] = getUserName() ?? "Share Extension"
+        priceRecord["addedBy"] = userRecordID
+        priceRecord["addedByName"] = userName
         priceRecord["note"] = "Imported from Google Maps"
         priceRecord["cafeReference"] = CKRecord.Reference(
             recordID: cafeRecord.recordID,
