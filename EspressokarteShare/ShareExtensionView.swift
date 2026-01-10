@@ -1,0 +1,318 @@
+//
+//  ShareExtensionView.swift
+//  EspressokarteShare
+//
+//  Created by Claude on 10.01.26.
+//
+
+import SwiftUI
+
+/// Main view for the share extension
+struct ShareExtensionView: View {
+    @ObservedObject var viewModel: ShareExtensionViewModel
+    let onComplete: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            content
+                .navigationTitle("Import Price")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel", action: onCancel)
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        if viewModel.canSave {
+                            Button("Save") {
+                                Task { await viewModel.save() }
+                            }
+                            .fontWeight(.semibold)
+                        }
+                    }
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch viewModel.state {
+        case .loading:
+            LoadingStateView(message: "Starting...")
+
+        case .notSignedIn:
+            NotSignedInView()
+
+        case .parsingURL:
+            LoadingStateView(message: "Reading Google Maps link...")
+
+        case .fetchingImage:
+            FetchingImageView(placeName: viewModel.photoData?.placeName)
+
+        case .extractingPrice:
+            ExtractingPriceView(image: viewModel.menuImage)
+
+        case .selectingCafe:
+            CafeSelectionView(
+                cafes: viewModel.matchingCafes,
+                placeName: viewModel.photoData?.placeName ?? "",
+                onSelect: { viewModel.selectCafe($0) }
+            )
+
+        case .ready:
+            if let cafe = viewModel.selectedCafe, let price = viewModel.extractedPrice {
+                ReadyToSaveView(
+                    cafe: cafe,
+                    price: price,
+                    image: viewModel.menuImage
+                )
+            }
+
+        case .saving:
+            LoadingStateView(message: "Saving price...")
+
+        case .success:
+            SuccessView(onComplete: onComplete)
+
+        case .error(let message):
+            ErrorView(
+                message: message,
+                onRetry: { Task { await viewModel.retry() } },
+                onCancel: onCancel
+            )
+        }
+    }
+}
+
+// MARK: - State Views
+
+struct LoadingStateView: View {
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .scaleEffect(1.2)
+            Text(message)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct NotSignedInView: View {
+    var body: some View {
+        ContentUnavailableView(
+            "Sign In Required",
+            systemImage: "person.crop.circle.badge.exclamationmark",
+            description: Text(
+                "Please open Espressokarte and sign in with Apple before importing prices.")
+        )
+    }
+}
+
+struct FetchingImageView: View {
+    let placeName: String?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .scaleEffect(1.2)
+            Text("Fetching menu image...")
+                .foregroundColor(.secondary)
+            if let name = placeName {
+                Text(name)
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct ExtractingPriceView: View {
+    let image: UIImage?
+
+    var body: some View {
+        VStack(spacing: 20) {
+            if let image = image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 200)
+                    .cornerRadius(12)
+                    .shadow(radius: 4)
+            }
+
+            VStack(spacing: 8) {
+                ProgressView()
+                Text("Extracting espresso price...")
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct CafeSelectionView: View {
+    let cafes: [ShareCafeData]
+    let placeName: String
+    let onSelect: (ShareCafeData) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Select Matching Cafe")
+                    .font(.headline)
+
+                Text(
+                    "Found \"\(placeName)\" on Google Maps. Select the matching Apple Maps location:"
+                )
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            }
+            .padding()
+
+            List(cafes) { cafe in
+                Button {
+                    onSelect(cafe)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(cafe.name)
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            Text(cafe.address)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+            }
+            .listStyle(.plain)
+        }
+    }
+}
+
+struct ReadyToSaveView: View {
+    let cafe: ShareCafeData
+    let price: Double
+    let image: UIImage?
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                if let image = image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 180)
+                        .cornerRadius(12)
+                        .shadow(radius: 4)
+                }
+
+                VStack(spacing: 8) {
+                    Text(String(format: "%.2f", price))
+                        .font(.system(size: 64, weight: .bold, design: .rounded))
+
+                    Text("Espresso price detected")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                VStack(spacing: 4) {
+                    Text(cafe.name)
+                        .font(.headline)
+                    Text(cafe.address)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+
+                Text("Tap Save to add this price")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+        }
+    }
+}
+
+struct SuccessView: View {
+    let onComplete: () -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 80))
+                .foregroundColor(.green)
+
+            Text("Price Saved!")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text("The espresso price has been added to Espressokarte.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button("Done") {
+                onComplete()
+            }
+            .buttonStyle(.borderedProminent)
+            .padding(.top)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct ErrorView: View {
+    let message: String
+    let onRetry: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 60))
+                .foregroundColor(.orange)
+
+            Text("Something Went Wrong")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+
+            HStack(spacing: 16) {
+                Button("Cancel") {
+                    onCancel()
+                }
+                .buttonStyle(.bordered)
+
+                Button("Try Again") {
+                    onRetry()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(.top)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
