@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		25E618D92F12A8D700779441 /* EspressokarteShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 25E618CF2F12A8D700779441 /* EspressokarteShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		25EEC81A2F102A750073CDCA /* cafe-lehel.gpx in Resources */ = {isa = PBXBuildFile; fileRef = 25EEC8192F102A750073CDCA /* cafe-lehel.gpx */; };
 /* End PBXBuildFile section */
 
@@ -25,12 +26,34 @@
 			remoteGlobalIDString = 2544F38A2F0EAE8F0045FBEB;
 			remoteInfo = Espressokarte;
 		};
+		25E618D72F12A8D700779441 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2544F3832F0EAE8F0045FBEB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 25E618CE2F12A8D700779441;
+			remoteInfo = EspressokarteShare;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		25E618DA2F12A8D700779441 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				25E618D92F12A8D700779441 /* EspressokarteShare.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		2544F38B2F0EAE8F0045FBEB /* Espressokarte.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Espressokarte.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2544F39C2F0EAE910045FBEB /* EspressokarteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EspressokarteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2544F3A62F0EAE910045FBEB /* EspressokarteUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EspressokarteUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		25E618CF2F12A8D700779441 /* EspressokarteShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = EspressokarteShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		25EEC8192F102A750073CDCA /* cafe-lehel.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "cafe-lehel.gpx"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -41,6 +64,13 @@
 				Info.plist,
 			);
 			target = 2544F38A2F0EAE8F0045FBEB /* Espressokarte */;
+		};
+		25E618DE2F12A8D700779441 /* Exceptions for "EspressokarteShare" folder in "EspressokarteShare" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 25E618CE2F12A8D700779441 /* EspressokarteShare */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -61,6 +91,14 @@
 		2544F3A92F0EAE910045FBEB /* EspressokarteUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = EspressokarteUITests;
+			sourceTree = "<group>";
+		};
+		25E618D02F12A8D700779441 /* EspressokarteShare */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				25E618DE2F12A8D700779441 /* Exceptions for "EspressokarteShare" folder in "EspressokarteShare" target */,
+			);
+			path = EspressokarteShare;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -87,6 +125,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		25E618CC2F12A8D700779441 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -96,6 +141,7 @@
 				2544F38D2F0EAE8F0045FBEB /* Espressokarte */,
 				2544F39F2F0EAE910045FBEB /* EspressokarteTests */,
 				2544F3A92F0EAE910045FBEB /* EspressokarteUITests */,
+				25E618D02F12A8D700779441 /* EspressokarteShare */,
 				2544F38C2F0EAE8F0045FBEB /* Products */,
 				25EEC8192F102A750073CDCA /* cafe-lehel.gpx */,
 			);
@@ -107,6 +153,7 @@
 				2544F38B2F0EAE8F0045FBEB /* Espressokarte.app */,
 				2544F39C2F0EAE910045FBEB /* EspressokarteTests.xctest */,
 				2544F3A62F0EAE910045FBEB /* EspressokarteUITests.xctest */,
+				25E618CF2F12A8D700779441 /* EspressokarteShare.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -121,10 +168,12 @@
 				2544F3872F0EAE8F0045FBEB /* Sources */,
 				2544F3882F0EAE8F0045FBEB /* Frameworks */,
 				2544F3892F0EAE8F0045FBEB /* Resources */,
+				25E618DA2F12A8D700779441 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				25E618D82F12A8D700779441 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				2544F38D2F0EAE8F0045FBEB /* Espressokarte */,
@@ -182,6 +231,28 @@
 			productReference = 2544F3A62F0EAE910045FBEB /* EspressokarteUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		25E618CE2F12A8D700779441 /* EspressokarteShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 25E618DD2F12A8D700779441 /* Build configuration list for PBXNativeTarget "EspressokarteShare" */;
+			buildPhases = (
+				25E618CB2F12A8D700779441 /* Sources */,
+				25E618CC2F12A8D700779441 /* Frameworks */,
+				25E618CD2F12A8D700779441 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				25E618D02F12A8D700779441 /* EspressokarteShare */,
+			);
+			name = EspressokarteShare;
+			packageProductDependencies = (
+			);
+			productName = EspressokarteShare;
+			productReference = 25E618CF2F12A8D700779441 /* EspressokarteShare.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -203,6 +274,9 @@
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = 2544F38A2F0EAE8F0045FBEB;
 					};
+					25E618CE2F12A8D700779441 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 				};
 			};
 			buildConfigurationList = 2544F3862F0EAE8F0045FBEB /* Build configuration list for PBXProject "Espressokarte" */;
@@ -222,6 +296,7 @@
 				2544F38A2F0EAE8F0045FBEB /* Espressokarte */,
 				2544F39B2F0EAE910045FBEB /* EspressokarteTests */,
 				2544F3A52F0EAE910045FBEB /* EspressokarteUITests */,
+				25E618CE2F12A8D700779441 /* EspressokarteShare */,
 			);
 		};
 /* End PBXProject section */
@@ -243,6 +318,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		2544F3A42F0EAE910045FBEB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		25E618CD2F12A8D700779441 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -273,6 +355,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		25E618CB2F12A8D700779441 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -286,6 +375,11 @@
 			target = 2544F38A2F0EAE8F0045FBEB /* Espressokarte */;
 			targetProxy = 2544F3A72F0EAE910045FBEB /* PBXContainerItemProxy */;
 		};
+		25E618D82F12A8D700779441 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 25E618CE2F12A8D700779441 /* EspressokarteShare */;
+			targetProxy = 25E618D72F12A8D700779441 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -295,7 +389,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
-				CODE_SIGN_ENTITLEMENTS = Espressokarte/Espressokarte.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Espressokarte/EspressokarteDebug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = R5Q99LLTGQ;
@@ -566,6 +660,65 @@
 			};
 			name = Release;
 		};
+		25E618DB2F12A8D700779441 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = EspressokarteShare/EspressokarteShareDebug.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = R5Q99LLTGQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EspressokarteShare/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = EspressokarteShare;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.timokuehne.Espressokarte.EspressokarteShare;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		25E618DC2F12A8D700779441 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = R5Q99LLTGQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EspressokarteShare/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = EspressokarteShare;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.timokuehne.Espressokarte.EspressokarteShare;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -601,6 +754,15 @@
 			buildConfigurations = (
 				2544F3B82F0EAE910045FBEB /* Debug */,
 				2544F3B92F0EAE910045FBEB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		25E618DD2F12A8D700779441 /* Build configuration list for PBXNativeTarget "EspressokarteShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				25E618DB2F12A8D700779441 /* Debug */,
+				25E618DC2F12A8D700779441 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
