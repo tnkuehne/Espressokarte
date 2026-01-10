@@ -64,7 +64,8 @@ struct ShareExtensionView: View {
                 ReadyToSaveView(
                     cafe: cafe,
                     price: price,
-                    image: viewModel.menuImage
+                    image: viewModel.menuImage,
+                    priceDate: $viewModel.priceDate
                 )
             }
 
@@ -206,6 +207,7 @@ struct ReadyToSaveView: View {
     let cafe: ShareCafeData
     let price: Double
     let image: UIImage?
+    @Binding var priceDate: Date
 
     var body: some View {
         ScrollView {
@@ -240,9 +242,25 @@ struct ReadyToSaveView: View {
                 .background(Color(.systemGray6))
                 .cornerRadius(12)
 
-                Text("Tap Save to add this price")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                // Date picker for when the photo was taken
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Photo taken on")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    DatePicker(
+                        "",
+                        selection: $priceDate,
+                        in: ...Date(),
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.compact)
+                    .labelsHidden()
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
             }
             .padding()
         }

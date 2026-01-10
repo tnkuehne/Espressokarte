@@ -67,6 +67,7 @@ final class ShareExtensionViewModel: ObservableObject {
     @Published var extractedPrice: Double?
     @Published var matchingCafes: [ShareCafeData] = []
     @Published var selectedCafe: ShareCafeData?
+    @Published var priceDate: Date = Date()
 
     private let urlParser = GoogleMapsURLParser()
     private let workerURL = URL(string: "https://espressokarte.timokuehne.com")!
@@ -377,7 +378,7 @@ final class ShareExtensionViewModel: ObservableObject {
         }
 
         priceRecord["price"] = price
-        priceRecord["date"] = Date()
+        priceRecord["date"] = priceDate
         priceRecord["addedBy"] = userRecordID
         priceRecord["addedByName"] = userName
         priceRecord["note"] = "Imported from Google Maps"
