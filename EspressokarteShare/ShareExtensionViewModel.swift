@@ -73,8 +73,14 @@ final class ShareExtensionViewModel: ObservableObject {
     private let workerURL = URL(string: "https://espressokarte.timokuehne.com")!
     // App group for UserDefaults sharing
     private let appGroup = "group.com.timokuehne.Espressokarte"
-    // Keychain access group for token sharing (must include team ID prefix)
-    private let keychainAccessGroup = "R5Q99LLTGQ.com.timokuehne.Espressokarte"
+    // Keychain access group for token sharing (read from Info.plist, includes team ID prefix)
+    private var keychainAccessGroup: String {
+        guard let group = Bundle.main.object(forInfoDictionaryKey: "KeychainAccessGroup") as? String
+        else {
+            fatalError("KeychainAccessGroup not found in Info.plist")
+        }
+        return group
+    }
     private let tokenKey = "com.espressokarte.appleIdentityToken"
     private let userIdKey = "com.espressokarte.appleUserIdentifier"
     private let userNameKey = "com.espressokarte.appleUserName"
