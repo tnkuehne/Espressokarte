@@ -22,6 +22,16 @@ final class AppleSignInManager: NSObject, ObservableObject {
     private let tokenKey = "com.espressokarte.appleIdentityToken"
     private let userIdKey = "com.espressokarte.appleUserIdentifier"
     private let userNameKey = "com.espressokarte.appleUserName"
+    // App group for UserDefaults sharing
+    private let appGroup = "group.com.timokuehne.Espressokarte"
+    // Keychain access group for token sharing (read from Info.plist, includes team ID prefix)
+    private var keychainAccessGroup: String {
+        guard let group = Bundle.main.object(forInfoDictionaryKey: "KeychainAccessGroup") as? String
+        else {
+            fatalError("KeychainAccessGroup not found in Info.plist")
+        }
+        return group
+    }
 
     @Published private(set) var userName: String?
 
@@ -47,7 +57,9 @@ final class AppleSignInManager: NSObject, ObservableObject {
 
     /// Check if user has valid stored credentials
     func checkExistingCredentials() async {
-        guard let userId = UserDefaults.standard.string(forKey: userIdKey) else {
+        let sharedDefaults = UserDefaults(suiteName: appGroup)
+
+        guard let userId = sharedDefaults?.string(forKey: userIdKey) else {
             isSignedIn = false
             return
         }
@@ -60,7 +72,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
             case .authorized:
                 if getStoredToken() != nil {
                     userIdentifier = userId
-                    userName = UserDefaults.standard.string(forKey: userNameKey)
+                    userName = sharedDefaults?.string(forKey: userNameKey)
                     isSignedIn = true
                 } else {
                     isSignedIn = false
@@ -107,6 +119,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: tokenKey,
+            kSecAttrAccessGroup as String: keychainAccessGroup,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
@@ -131,6 +144,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
         let deleteQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: tokenKey,
+            kSecAttrAccessGroup as String: keychainAccessGroup,
         ]
         SecItemDelete(deleteQuery as CFDictionary)
 
@@ -138,8 +152,9 @@ final class AppleSignInManager: NSObject, ObservableObject {
         let addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: tokenKey,
+            kSecAttrAccessGroup as String: keychainAccessGroup,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
         ]
         SecItemAdd(addQuery as CFDictionary, nil)
     }
@@ -149,12 +164,14 @@ final class AppleSignInManager: NSObject, ObservableObject {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: tokenKey,
+            kSecAttrAccessGroup as String: keychainAccessGroup,
         ]
         SecItemDelete(query as CFDictionary)
 
-        // Clear UserDefaults
-        UserDefaults.standard.removeObject(forKey: userIdKey)
-        UserDefaults.standard.removeObject(forKey: userNameKey)
+        // Clear UserDefaults (use shared container for extension access)
+        let sharedDefaults = UserDefaults(suiteName: appGroup)
+        sharedDefaults?.removeObject(forKey: userIdKey)
+        sharedDefaults?.removeObject(forKey: userNameKey)
     }
 }
 
@@ -177,7 +194,8 @@ extension AppleSignInManager: ASAuthorizationControllerDelegate {
 
             // Store credentials
             storeToken(identityToken)
-            UserDefaults.standard.set(credential.user, forKey: userIdKey)
+            let sharedDefaults = UserDefaults(suiteName: appGroup)
+            sharedDefaults?.set(credential.user, forKey: userIdKey)
 
             // Store full name if provided (only available on first sign-in)
             if let fullName = credential.fullName {
@@ -187,14 +205,14 @@ extension AppleSignInManager: ASAuthorizationControllerDelegate {
                     .filter { !$0.isEmpty }
                     .joined(separator: " ")
                 if !displayName.isEmpty {
-                    UserDefaults.standard.set(displayName, forKey: userNameKey)
+                    sharedDefaults?.set(displayName, forKey: userNameKey)
                     userName = displayName
                 }
             }
 
             // Load stored name if not set from this sign-in
             if userName == nil {
-                userName = UserDefaults.standard.string(forKey: userNameKey)
+                userName = sharedDefaults?.string(forKey: userNameKey)
             }
 
             userIdentifier = credential.user
