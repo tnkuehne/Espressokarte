@@ -47,7 +47,7 @@ platform :ios do
     build_app(
       project: "Espressokarte.xcodeproj",
       scheme: "Espressokarte",
-      export_method: "app-store-connect",
+      export_method: "app-store",
       export_options: {
         provisioningProfiles: {
           "com.timokuehne.Espressokarte" => ENV["APP_PROFILE_NAME"] || "Espressokarte Appstore",
