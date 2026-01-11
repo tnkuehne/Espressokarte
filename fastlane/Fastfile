@@ -6,7 +6,7 @@ platform :ios do
     run_tests(
       project: "Espressokarte.xcodeproj",
       scheme: "Espressokarte",
-      device: "iPhone 16 Pro",
+      device: "iPhone 17",
       code_coverage: true,
       result_bundle: true
     )
