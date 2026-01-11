@@ -26,11 +26,18 @@ Package.resolved
 # CocoaPods (if you ever use it)
 Pods/
 
-# Fastlane (if you ever use it)
+# Fastlane
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+fastlane/README.md
+*.ipa
+*.dSYM.zip
+
+# Ruby
+vendor/bundle
+.bundle
 
 # Code Injection
 iOSInjectionProject/
