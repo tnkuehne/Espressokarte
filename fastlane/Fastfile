@@ -46,12 +46,14 @@ platform :ios do
       is_key_content_base64: true
     )
 
-    # Build the app
+    # Build the app with manual signing
     build_app(
       project: "Espressokarte.xcodeproj",
       scheme: "Espressokarte",
       export_method: "app-store",
+      xcargs: "CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=R5Q99LLTGQ",
       export_options: {
+        signingStyle: "manual",
         provisioningProfiles: {
           "com.timokuehne.Espressokarte" => ENV["APP_PROFILE_NAME"] || "Espressokarte Appstore",
           "com.timokuehne.Espressokarte.EspressokarteShare" => ENV["SHARE_PROFILE_NAME"] || "Espressokarte Share AppStore"
