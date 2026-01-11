@@ -17,7 +17,7 @@
 	</array>
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)group.com.timokuehne.Espressokarte</string>
+		<string>$(AppIdentifierPrefix)com.timokuehne.Espressokarte</string>
 	</array>
 </dict>
 </plist>

@@ -71,7 +71,10 @@ final class ShareExtensionViewModel: ObservableObject {
 
     private let urlParser = GoogleMapsURLParser()
     private let workerURL = URL(string: "https://espressokarte.timokuehne.com")!
-    private let accessGroup = "group.com.timokuehne.Espressokarte"
+    // App group for UserDefaults sharing
+    private let appGroup = "group.com.timokuehne.Espressokarte"
+    // Keychain access group for token sharing (must include team ID prefix)
+    private let keychainAccessGroup = "R5Q99LLTGQ.com.timokuehne.Espressokarte"
     private let tokenKey = "com.espressokarte.appleIdentityToken"
     private let userIdKey = "com.espressokarte.appleUserIdentifier"
     private let userNameKey = "com.espressokarte.appleUserName"
@@ -409,7 +412,7 @@ final class ShareExtensionViewModel: ObservableObject {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: tokenKey,
-            kSecAttrAccessGroup as String: accessGroup,
+            kSecAttrAccessGroup as String: keychainAccessGroup,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
@@ -428,12 +431,12 @@ final class ShareExtensionViewModel: ObservableObject {
     }
 
     private func getUserRecordID() -> String? {
-        let sharedDefaults = UserDefaults(suiteName: accessGroup)
+        let sharedDefaults = UserDefaults(suiteName: appGroup)
         return sharedDefaults?.string(forKey: userIdKey)
     }
 
     private func getUserName() -> String? {
-        let sharedDefaults = UserDefaults(suiteName: accessGroup)
+        let sharedDefaults = UserDefaults(suiteName: appGroup)
         return sharedDefaults?.string(forKey: userNameKey)
     }
 }
