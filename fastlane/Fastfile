@@ -14,7 +14,14 @@ platform :ios do
 
   desc "Build and upload to TestFlight"
   lane :beta do
-    setup_ci if ENV["CI"]
+    if ENV["CI"]
+      # Use the keychain created by the workflow
+      keychain_path = ENV["KEYCHAIN_PATH"]
+      unlock_keychain(
+        path: keychain_path,
+        password: ENV["KEYCHAIN_PASSWORD"]
+      ) if keychain_path
+    end
 
     # Install provisioning profiles from environment
     install_provisioning_profile(path: ENV["APP_PROVISIONING_PROFILE_PATH"]) if ENV["APP_PROVISIONING_PROFILE_PATH"]
