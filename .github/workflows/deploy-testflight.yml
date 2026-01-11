@@ -67,16 +67,18 @@ jobs:
           # Create profiles directory
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
 
-          # Decode and install profiles
-          APP_PROFILE_PATH=~/Library/MobileDevice/Provisioning\ Profiles/app.mobileprovision
-          SHARE_PROFILE_PATH=~/Library/MobileDevice/Provisioning\ Profiles/share.mobileprovision
+          # Decode app profile, extract UUID, and install with correct filename
+          echo -n "$APP_PROVISIONING_PROFILE_BASE64" | base64 --decode > /tmp/app.mobileprovision
+          APP_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(/usr/bin/security cms -D -i /tmp/app.mobileprovision))
+          cp /tmp/app.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$APP_UUID.mobileprovision
 
-          echo -n "$APP_PROVISIONING_PROFILE_BASE64" | base64 --decode -o "$APP_PROFILE_PATH"
-          echo -n "$SHARE_PROVISIONING_PROFILE_BASE64" | base64 --decode -o "$SHARE_PROFILE_PATH"
+          # Decode share profile, extract UUID, and install with correct filename
+          echo -n "$SHARE_PROVISIONING_PROFILE_BASE64" | base64 --decode > /tmp/share.mobileprovision
+          SHARE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(/usr/bin/security cms -D -i /tmp/share.mobileprovision))
+          cp /tmp/share.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$SHARE_UUID.mobileprovision
 
-          # Export paths for fastlane
-          echo "APP_PROVISIONING_PROFILE_PATH=$APP_PROFILE_PATH" >> $GITHUB_ENV
-          echo "SHARE_PROVISIONING_PROFILE_PATH=$SHARE_PROFILE_PATH" >> $GITHUB_ENV
+          echo "Installed app profile with UUID: $APP_UUID"
+          echo "Installed share profile with UUID: $SHARE_UUID"
 
       - name: Build and Upload to TestFlight
         env:

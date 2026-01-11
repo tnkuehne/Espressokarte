@@ -23,10 +23,6 @@ platform :ios do
       ) if keychain_path
     end
 
-    # Install provisioning profiles from environment
-    install_provisioning_profile(path: ENV["APP_PROVISIONING_PROFILE_PATH"]) if ENV["APP_PROVISIONING_PROFILE_PATH"]
-    install_provisioning_profile(path: ENV["SHARE_PROVISIONING_PROFILE_PATH"]) if ENV["SHARE_PROVISIONING_PROFILE_PATH"]
-
     # Set build number from GitHub run number
     build_number = ENV["BUILD_NUMBER"] || Time.now.strftime("%Y%m%d%H%M")
     increment_build_number(
