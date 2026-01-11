@@ -1,0 +1,93 @@
+@import 'tailwindcss';
+
+@theme {
+	--color-border: hsl(20 5.9% 90%);
+	--color-input: hsl(20 5.9% 90%);
+	--color-ring: hsl(20 14.3% 4.1%);
+	--color-background: hsl(0 0% 100%);
+	--color-foreground: hsl(20 14.3% 4.1%);
+
+	--color-primary: hsl(24 9.8% 10%);
+	--color-primary-foreground: hsl(60 9.1% 97.8%);
+
+	--color-secondary: hsl(60 4.8% 95.9%);
+	--color-secondary-foreground: hsl(24 9.8% 10%);
+
+	--color-destructive: hsl(0 84.2% 60.2%);
+	--color-destructive-foreground: hsl(60 9.1% 97.8%);
+
+	--color-muted: hsl(60 4.8% 95.9%);
+	--color-muted-foreground: hsl(25 5.3% 44.7%);
+
+	--color-accent: hsl(60 4.8% 95.9%);
+	--color-accent-foreground: hsl(24 9.8% 10%);
+
+	--color-popover: hsl(0 0% 100%);
+	--color-popover-foreground: hsl(20 14.3% 4.1%);
+
+	--color-card: hsl(0 0% 100%);
+	--color-card-foreground: hsl(20 14.3% 4.1%);
+
+	--color-espresso-cheap: #22c55e;
+	--color-espresso-medium: #3b82f6;
+	--color-espresso-expensive: #f97316;
+	--color-espresso-very-expensive: #ef4444;
+
+	--radius-sm: 0.375rem;
+	--radius-md: 0.5rem;
+	--radius-lg: 0.625rem;
+}
+
+@layer base {
+	* {
+		@apply border-border;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+}
+
+/* Map styles */
+.map-container {
+	width: 100%;
+	height: 100%;
+}
+
+/* Custom marker styles */
+.price-marker {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 4px 8px;
+	border-radius: 12px;
+	font-size: 12px;
+	font-weight: 600;
+	color: white;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+	cursor: pointer;
+	transition: transform 0.15s ease;
+}
+
+.price-marker:hover {
+	transform: scale(1.1);
+}
+
+.price-marker.cheap {
+	background-color: var(--color-espresso-cheap);
+}
+
+.price-marker.medium {
+	background-color: var(--color-espresso-medium);
+}
+
+.price-marker.expensive {
+	background-color: var(--color-espresso-expensive);
+}
+
+.price-marker.very-expensive {
+	background-color: var(--color-espresso-very-expensive);
+}
+
+.price-marker.no-price {
+	background-color: #6b7280;
+}

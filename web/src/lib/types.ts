@@ -1,0 +1,63 @@
+export interface Cafe {
+	id: string;
+	recordName: string;
+	cafeId: string;
+	name: string;
+	address: string;
+	latitude: number;
+	longitude: number;
+	currentPrice: number | null;
+}
+
+export interface PriceRecord {
+	id: string;
+	recordName: string;
+	price: number;
+	date: Date;
+	addedBy: string;
+	addedByName: string;
+	note: string | null;
+	menuImageUrl: string | null;
+	cafeRecordName: string;
+}
+
+export type PriceCategory = 'cheap' | 'medium' | 'expensive' | 'very-expensive' | 'no-price';
+
+export function getPriceCategory(price: number | null): PriceCategory {
+	if (price === null || price === undefined) return 'no-price';
+	if (price < 2.0) return 'cheap';
+	if (price < 2.5) return 'medium';
+	if (price < 3.0) return 'expensive';
+	return 'very-expensive';
+}
+
+export function getPriceCategoryColor(category: PriceCategory): string {
+	switch (category) {
+		case 'cheap':
+			return '#22c55e';
+		case 'medium':
+			return '#3b82f6';
+		case 'expensive':
+			return '#f97316';
+		case 'very-expensive':
+			return '#ef4444';
+		case 'no-price':
+		default:
+			return '#6b7280';
+	}
+}
+
+export function formatPrice(price: number | null): string {
+	if (price === null || price === undefined) return '—';
+	return `€${price.toFixed(2)}`;
+}
+
+export function formatDate(date: Date): string {
+	return new Intl.DateTimeFormat('de-DE', {
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit'
+	}).format(date);
+}
