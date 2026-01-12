@@ -103,8 +103,6 @@ export function createCafeAnnotation(
       return element;
     },
     {
-      title: cafe.name,
-      subtitle: cafe.address,
       data: { cafe },
     },
   );

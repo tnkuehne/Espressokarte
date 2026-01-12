@@ -6,12 +6,8 @@
     import User from "@lucide/svelte/icons/user";
     import Calendar from "@lucide/svelte/icons/calendar";
     import MessageSquare from "@lucide/svelte/icons/message-square";
-    import Image from "@lucide/svelte/icons/image";
 
-    let {
-        record,
-        showImage = false,
-    }: { record: PriceRecord; showImage?: boolean } = $props();
+    let { record }: { record: PriceRecord } = $props();
 
     let priceCategory = $derived(getPriceCategory(record.price));
 </script>
@@ -40,17 +36,4 @@
             {formatPrice(record.price)}
         </Badge>
     </div>
-
-    {#if showImage && record.menuImageUrl}
-        <div class="mt-3">
-            <button
-                class="flex items-center gap-2 text-sm text-primary hover:underline"
-                onclick={() => window.open(record.menuImageUrl!, "_blank")}
-                type="button"
-            >
-                <Image class="h-4 w-4" />
-                View menu photo
-            </button>
-        </div>
-    {/if}
 </div>

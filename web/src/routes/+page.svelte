@@ -152,7 +152,7 @@
 						{:else}
 							<div class="divide-y divide-border">
 								{#each priceHistory as record (record.id)}
-									<PriceHistoryItem {record} showImage={true} />
+									<PriceHistoryItem {record} />
 								{/each}
 							</div>
 						{/if}
