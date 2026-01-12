@@ -10,7 +10,6 @@
 	import MapPin from '@lucide/svelte/icons/map-pin';
 	import History from '@lucide/svelte/icons/history';
 	import * as Sheet from '$lib/components/ui/sheet';
-	import * as Card from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import PriceHistoryItem from '$lib/components/PriceHistoryItem.svelte';
@@ -66,12 +65,20 @@
 
 	onMount(async () => {
 		try {
-			await initMapKit(PUBLIC_MAPKIT_TOKEN);
-			mapReady = true;
+			// Start both initializations in parallel
+			// CloudKit path: init -> fetch cafes (doesn't need MapKit)
+			// MapKit path: init -> show map (doesn't need CloudKit)
+			const cafesPromise = initCloudKit(PUBLIC_CLOUDKIT_TOKEN).then(() => fetchAllCafes());
+			const mapPromise = initMapKit(PUBLIC_MAPKIT_TOKEN).then(() => {
+				mapReady = true;
+			});
 
-			await initCloudKit(PUBLIC_CLOUDKIT_TOKEN);
-			cafes = await fetchAllCafes();
+			// Wait for cafes (map will show as soon as it's ready via mapReady state)
+			cafes = await cafesPromise;
 			cafesLoading = false;
+
+			// Ensure map is also ready before we finish
+			await mapPromise;
 		} catch (err) {
 			console.error('Failed to initialize:', err);
 			error = err instanceof Error ? err.message : 'Failed to load data';
