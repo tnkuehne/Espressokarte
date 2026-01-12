@@ -44,12 +44,48 @@ export function createMap(container: HTMLElement): mapkit.Map {
     showsMapTypeControl: false,
     showsUserLocationControl: true,
     colorScheme: "light" as unknown as mapkit.ColorScheme,
+    isScrollEnabled: true,
+    isZoomEnabled: true,
   });
 
   // Default to Germany/Europe
   map.region = new window.mapkit.CoordinateRegion(
     new window.mapkit.Coordinate(51.1657, 10.4515),
     new window.mapkit.CoordinateSpan(8, 12),
+  );
+
+  // Show hint when user scrolls without Ctrl
+  let hintTimeout: ReturnType<typeof setTimeout> | null = null;
+  let hintElement: HTMLElement | null = null;
+
+  container.addEventListener(
+    "wheel",
+    (event) => {
+      // If Ctrl is held, let MapKit handle the zoom
+      if (event.ctrlKey || event.metaKey) {
+        return;
+      }
+
+      // Show hint overlay
+      if (!hintElement) {
+        hintElement = document.createElement("div");
+        hintElement.className = "map-scroll-hint";
+        hintElement.textContent = "Use Ctrl + scroll to zoom the map";
+        container.style.position = "relative";
+        container.appendChild(hintElement);
+      }
+
+      hintElement.classList.add("visible");
+
+      // Hide after 2 seconds
+      if (hintTimeout) {
+        clearTimeout(hintTimeout);
+      }
+      hintTimeout = setTimeout(() => {
+        hintElement?.classList.remove("visible");
+      }, 2000);
+    },
+    { passive: true },
   );
 
   return map;
