@@ -693,6 +693,7 @@
 		25E618DC2F12A8D700779441 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = EspressokarteShare/EspressokarteShare.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = R5Q99LLTGQ;
