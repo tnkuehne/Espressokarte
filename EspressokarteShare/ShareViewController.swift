@@ -49,6 +49,12 @@ class ShareViewController: UIViewController {
         }
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Set the window for sign-in UI presentation (now that view is in window hierarchy)
+        viewModel.setPresentingWindow(view.window)
+    }
+
     private func extractAndProcessURL() async {
         guard let extensionItem = extensionContext?.inputItems.first as? NSExtensionItem,
             let attachments = extensionItem.attachments
