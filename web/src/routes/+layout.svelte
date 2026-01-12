@@ -1,10 +1,13 @@
 <script lang="ts">
     import "../app.css";
+    import { ModeWatcher } from "mode-watcher";
 
     import Coffee from "@lucide/svelte/icons/coffee";
 
     let { children } = $props();
 </script>
+
+<ModeWatcher />
 
 <svelte:head>
     <link rel="icon" href="/favicon.png" />

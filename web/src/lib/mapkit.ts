@@ -38,12 +38,27 @@ export async function initMapKit(token: string): Promise<void> {
 }
 
 export function createMap(container: HTMLElement): mapkit.Map {
+  // Detect initial dark mode preference
+  const prefersDark =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+
   const map = new window.mapkit.Map(container, {
     showsCompass: window.mapkit.FeatureVisibility.Adaptive,
     showsScale: window.mapkit.FeatureVisibility.Adaptive,
     showsMapTypeControl: false,
     showsUserLocationControl: true,
   });
+
+  // Set initial color scheme using string value
+  (map as any).colorScheme = prefersDark ? "dark" : "light";
+
+  // Listen for system preference changes
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  const handleChange = (e: MediaQueryListEvent) => {
+    (map as any).colorScheme = e.matches ? "dark" : "light";
+  };
+  mediaQuery.addEventListener("change", handleChange);
 
   // Default to Germany/Europe
   map.region = new window.mapkit.CoordinateRegion(
