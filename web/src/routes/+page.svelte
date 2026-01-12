@@ -113,63 +113,55 @@
 
 <!-- Cafe Detail Sheet -->
 <Sheet.Root bind:open={sheetOpen}>
-	<Sheet.Content side="right" class="w-full sm:max-w-md overflow-y-auto">
+	<Sheet.Content side="right" class="w-full sm:max-w-md overflow-y-auto p-0">
 		{#if selectedCafe}
-			<Sheet.Header>
-				<Sheet.Title class="text-xl">{selectedCafe.name}</Sheet.Title>
-				<Sheet.Description class="flex items-center gap-1">
-					<MapPin class="h-4 w-4" />
-					{selectedCafe.address}
-				</Sheet.Description>
-			</Sheet.Header>
+			<!-- Header with gradient background -->
+			<div class="bg-gradient-to-br from-primary/10 to-primary/5 px-6 pt-12 pb-6">
+				<Badge variant={priceCategory} class="text-2xl font-bold px-5 py-2.5 mb-4">
+					{formatPrice(selectedCafe.currentPrice)}
+				</Badge>
+				<h2 class="text-2xl font-semibold tracking-tight">{selectedCafe.name}</h2>
+				<p class="flex items-center gap-1.5 text-muted-foreground mt-2">
+					<MapPin class="h-4 w-4 shrink-0" />
+					<span>{selectedCafe.address}</span>
+				</p>
+			</div>
 
-			<div class="space-y-6 py-4">
-				<!-- Current Price -->
-				<div class="flex items-center justify-between">
-					<span class="text-muted-foreground">Current Espresso Price</span>
-					<Badge variant={priceCategory} class="text-lg px-4 py-2">
-						{formatPrice(selectedCafe.currentPrice)}
-					</Badge>
+			<!-- Content -->
+			<div class="px-6 py-6 space-y-6">
+				<!-- Price History -->
+				<div>
+					<h3 class="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
+						<History class="h-4 w-4" />
+						Price History
+					</h3>
+
+					{#if loadingHistory}
+						<div class="flex items-center justify-center py-12">
+							<Loader2 class="h-5 w-5 animate-spin text-muted-foreground" />
+						</div>
+					{:else if priceHistory.length === 0}
+						<div class="text-center py-8 bg-muted/30 rounded-lg">
+							<p class="text-muted-foreground text-sm">No price history yet</p>
+						</div>
+					{:else}
+						<div class="space-y-3">
+							{#each priceHistory as record (record.id)}
+								<PriceHistoryItem {record} />
+							{/each}
+						</div>
+					{/if}
 				</div>
 
-				<!-- Price History -->
-				<Card.Root>
-					<Card.Header class="pb-3">
-						<Card.Title class="flex items-center gap-2 text-base">
-							<History class="h-4 w-4" />
-							Price History
-						</Card.Title>
-					</Card.Header>
-					<Card.Content>
-						{#if loadingHistory}
-							<div class="flex items-center justify-center py-8">
-								<Loader2 class="h-6 w-6 animate-spin text-primary" />
-							</div>
-						{:else if priceHistory.length === 0}
-							<p class="text-center text-muted-foreground py-4 text-sm">
-								No price history available yet.
-							</p>
-						{:else}
-							<div class="divide-y divide-border">
-								{#each priceHistory as record (record.id)}
-									<PriceHistoryItem {record} />
-								{/each}
-							</div>
-						{/if}
-					</Card.Content>
-				</Card.Root>
-
-				<!-- CTA to download app -->
-				<Card.Root class="bg-muted/50">
-					<Card.Content class="text-center py-6">
-						<p class="text-muted-foreground mb-3 text-sm">
-							Want to add or update prices?
-						</p>
-						<Button href="https://apps.apple.com" variant="default" size="sm">
-							Download the iOS App
-						</Button>
-					</Card.Content>
-				</Card.Root>
+				<!-- CTA -->
+				<div class="border-t border-border pt-6">
+					<p class="text-center text-sm text-muted-foreground mb-3">
+						Want to add or update prices?
+					</p>
+					<Button href="https://apps.apple.com" class="w-full">
+						Download the iOS App
+					</Button>
+				</div>
 			</div>
 		{/if}
 	</Sheet.Content>
