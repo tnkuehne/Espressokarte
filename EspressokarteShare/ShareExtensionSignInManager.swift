@@ -30,6 +30,9 @@ final class ShareExtensionSignInManager: NSObject {
 
     /// Perform Sign in with Apple using the provided window as presentation anchor
     func signIn(presentingFrom window: UIWindow?) async throws -> String {
+        guard let window = window else {
+            throw ShareExtensionSignInError.noWindow
+        }
         self.presentationAnchor = window
 
         let request = ASAuthorizationAppleIDProvider().createRequest()
@@ -152,7 +155,8 @@ extension ShareExtensionSignInManager: ASAuthorizationControllerDelegate {
 
 extension ShareExtensionSignInManager: ASAuthorizationControllerPresentationContextProviding {
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        return presentationAnchor ?? UIWindow()
+        // Safe to force unwrap - we validate window exists in signIn() before reaching here
+        return presentationAnchor!
     }
 }
 
@@ -160,11 +164,14 @@ extension ShareExtensionSignInManager: ASAuthorizationControllerPresentationCont
 
 enum ShareExtensionSignInError: LocalizedError {
     case invalidCredential
+    case noWindow
 
     var errorDescription: String? {
         switch self {
         case .invalidCredential:
             return "Failed to get valid credentials from Apple."
+        case .noWindow:
+            return "Unable to present sign-in. Please try again."
         }
     }
 }
