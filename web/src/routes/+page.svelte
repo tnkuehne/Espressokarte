@@ -6,8 +6,7 @@
 	import { initMapKit, createMap, addCafesToMap } from '$lib/mapkit';
 	import type { Cafe } from '$lib/types';
 	import type { Attachment } from 'svelte/attachments';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Loader2 } from 'lucide-svelte';
+	import Loader2 from '@lucide/svelte/icons/loader-2';
 
 	let cafes = $state<Cafe[]>([]);
 	let mapReady = $state(false);
@@ -55,16 +54,6 @@
 </script>
 
 <div class="flex flex-col h-[calc(100vh-8rem)]">
-	<!-- Price Legend -->
-	<div class="px-4 py-2 border-b border-border bg-muted/30">
-		<div class="max-w-7xl mx-auto flex flex-wrap gap-2 items-center text-sm">
-			<span class="text-muted-foreground mr-2">Prices:</span>
-			<Badge variant="cheap">{'< €2.00'}</Badge>
-			<Badge variant="medium">€2.00-2.50</Badge>
-			<Badge variant="expensive">€2.50-3.00</Badge>
-			<Badge variant="very-expensive">{'> €3.00'}</Badge>
-		</div>
-	</div>
 
 	<!-- Map -->
 	<div class="flex-1 relative">
