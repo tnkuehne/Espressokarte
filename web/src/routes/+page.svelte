@@ -1,13 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { PUBLIC_MAPKIT_TOKEN, PUBLIC_CLOUDKIT_TOKEN } from '$env/static/public';
 	import { initCloudKit, fetchAllCafes } from '$lib/cloudkit';
 	import { initMapKit, createMap, addCafesToMap } from '$lib/mapkit';
 	import type { Cafe } from '$lib/types';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Loader2 } from 'lucide-svelte';
-
-	let { data } = $props();
 
 	let cafes = $state<Cafe[]>([]);
 	let loading = $state(true);
@@ -22,8 +21,8 @@
 	onMount(async () => {
 		try {
 			await Promise.all([
-				initMapKit(data.mapkitToken),
-				initCloudKit(data.cloudkitToken)
+				initMapKit(PUBLIC_MAPKIT_TOKEN),
+				initCloudKit(PUBLIC_CLOUDKIT_TOKEN)
 			]);
 
 			cafes = await fetchAllCafes();

@@ -1,7 +1,5 @@
 name = "espressokarte-web"
 compatibility_date = "2024-11-01"
 
-[vars]
-# Add your MapKit and CloudKit tokens here or via Cloudflare dashboard
-# MAPKIT_JWT_TOKEN = "your-mapkit-jwt-token"
-# CLOUDKIT_API_TOKEN = "your-cloudkit-api-token"
+# Tokens are set via .env file at build time (PUBLIC_MAPKIT_TOKEN, PUBLIC_CLOUDKIT_TOKEN)
+# See .env.example for required variables

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+	import { PUBLIC_MAPKIT_TOKEN, PUBLIC_CLOUDKIT_TOKEN } from '$env/static/public';
 	import { initCloudKit, fetchCafe, fetchPriceHistory } from '$lib/cloudkit';
 	import { initMapKit, createMap, focusOnCafe, createCafeAnnotation } from '$lib/mapkit';
 	import type { Cafe, PriceRecord } from '$lib/types';
@@ -10,8 +12,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { ArrowLeft, MapPin, Loader2, History } from 'lucide-svelte';
-
-	let { data } = $props();
 
 	let cafe = $state<Cafe | null>(null);
 	let priceHistory = $state<PriceRecord[]>([]);
@@ -23,15 +23,15 @@
 	let priceCategory = $derived(cafe ? getPriceCategory(cafe.currentPrice) : 'no-price');
 
 	onMount(async () => {
+		const cafeId = $page.params.id;
+
 		try {
-			// Initialize CloudKit and MapKit
 			await Promise.all([
-				initCloudKit(data.cloudkitToken),
-				initMapKit(data.mapkitToken)
+				initCloudKit(PUBLIC_CLOUDKIT_TOKEN),
+				initMapKit(PUBLIC_MAPKIT_TOKEN)
 			]);
 
-			// Fetch cafe details
-			cafe = await fetchCafe(data.cafeId);
+			cafe = await fetchCafe(cafeId);
 
 			if (!cafe) {
 				error = 'Cafe not found';
@@ -39,10 +39,8 @@
 				return;
 			}
 
-			// Fetch price history
-			priceHistory = await fetchPriceHistory(data.cafeId);
+			priceHistory = await fetchPriceHistory(cafeId);
 
-			// Initialize map
 			if (mapContainer && cafe) {
 				map = createMap(mapContainer);
 				const annotation = createCafeAnnotation(cafe, () => {});
