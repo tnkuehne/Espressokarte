@@ -39,13 +39,10 @@ export async function initMapKit(token: string): Promise<void> {
 
 export function createMap(container: HTMLElement): mapkit.Map {
   const map = new window.mapkit.Map(container, {
-    showsCompass: "adaptive" as unknown as mapkit.FeatureVisibility,
-    showsScale: "adaptive" as unknown as mapkit.FeatureVisibility,
+    showsCompass: window.mapkit.FeatureVisibility.Adaptive,
+    showsScale: window.mapkit.FeatureVisibility.Adaptive,
     showsMapTypeControl: false,
     showsUserLocationControl: true,
-    colorScheme: "light" as unknown as mapkit.ColorScheme,
-    isScrollEnabled: true,
-    isZoomEnabled: true,
   });
 
   // Default to Germany/Europe

@@ -13,6 +13,8 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260111.0",
+    "@internationalized/date": "^3.10.1",
+    "@lucide/svelte": "^0.561.0",
     "@sveltejs/adapter-auto": "^7.0.0",
     "@sveltejs/adapter-cloudflare": "^7.2.4",
     "@sveltejs/kit": "^2.49.1",
@@ -29,7 +31,6 @@
     "bits-ui": "^2.15.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "@lucide/svelte": "^0.562.0",
     "tailwind-merge": "^3.4.0",
     "tailwind-variants": "^3.2.2"
   }
