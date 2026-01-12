@@ -41,7 +41,9 @@ struct ShareExtensionView: View {
             LoadingStateView(message: "Starting...")
 
         case .notSignedIn:
-            NotSignedInView()
+            NotSignedInView(onSignIn: {
+                Task { await viewModel.signIn() }
+            })
 
         case .parsingURL:
             LoadingStateView(message: "Reading Google Maps link...")
@@ -102,13 +104,40 @@ struct LoadingStateView: View {
 }
 
 struct NotSignedInView: View {
+    let onSignIn: () -> Void
+
     var body: some View {
-        ContentUnavailableView(
-            "Sign In Required",
-            systemImage: "person.crop.circle.badge.exclamationmark",
-            description: Text(
-                "Please open Espressokarte and sign in with Apple before importing prices.")
-        )
+        VStack(spacing: 24) {
+            Image(systemName: "person.crop.circle.badge.exclamationmark")
+                .font(.system(size: 60))
+                .foregroundColor(.secondary)
+
+            Text("Sign In Required")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text("Sign in with Apple to import espresso prices.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+
+            Button(action: onSignIn) {
+                HStack(spacing: 8) {
+                    Image(systemName: "applelogo")
+                    Text("Sign in with Apple")
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(.white)
+                .frame(height: 50)
+                .frame(maxWidth: 280)
+                .background(Color.black)
+                .cornerRadius(8)
+            }
+            .padding(.top, 8)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

@@ -5,6 +5,7 @@
 //  Created by Claude on 10.01.26.
 //
 
+import AuthenticationServices
 import CloudKit
 import Combine
 import Foundation
@@ -86,9 +87,34 @@ final class ShareExtensionViewModel: ObservableObject {
     private let userNameKey = "com.espressokarte.appleUserName"
 
     private var inputURL: URL?
+    private weak var presentingWindow: UIWindow?
+    private let signInManager = ShareExtensionSignInManager()
 
     var canSave: Bool {
         selectedCafe != nil && extractedPrice != nil && state != .saving
+    }
+
+    /// Set the window for presenting sign-in UI
+    func setPresentingWindow(_ window: UIWindow?) {
+        self.presentingWindow = window
+    }
+
+    /// Attempt to sign in with Apple from the share extension
+    func signIn() async {
+        do {
+            _ = try await signInManager.signIn(presentingFrom: presentingWindow)
+            // After successful sign-in, retry processing if we have a URL
+            if let url = inputURL {
+                await processURL(url)
+            } else {
+                state = .loading
+            }
+        } catch let error as ASAuthorizationError where error.code == .canceled {
+            // User cancelled, stay on not signed in screen
+            state = .notSignedIn
+        } catch {
+            state = .error("Sign in failed: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Main Processing Flow
@@ -96,8 +122,10 @@ final class ShareExtensionViewModel: ObservableObject {
     func processURL(_ url: URL) async {
         inputURL = url
 
-        // Check authentication first
-        guard let token = getStoredToken() else {
+        // Check authentication first - need both token AND user ID
+        guard let token = getStoredToken(),
+            getUserRecordID() != nil
+        else {
             state = .notSignedIn
             return
         }
