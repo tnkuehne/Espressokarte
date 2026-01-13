@@ -24,7 +24,6 @@ export interface PriceRecord {
 	note: string | null;
 	menuImageUrl: string | null;
 	cafeRecordName: string;
-	drinks: DrinkPrice[];
 }
 
 export function findEspressoPrice(drinks: DrinkPrice[]): number | null {
@@ -35,6 +34,14 @@ export function findEspressoPrice(drinks: DrinkPrice[]): number | null {
 		const name = d.name.toLowerCase();
 		return name.includes('espresso') && !name.includes('double') && !name.includes('doppio');
 	});
+	return partial?.price ?? null;
+}
+
+export function findDrinkPrice(drinks: DrinkPrice[], drinkName: string): number | null {
+	const exact = drinks.find((d) => d.name.toLowerCase() === drinkName.toLowerCase());
+	if (exact) return exact.price;
+
+	const partial = drinks.find((d) => d.name.toLowerCase().includes(drinkName.toLowerCase()));
 	return partial?.price ?? null;
 }
 

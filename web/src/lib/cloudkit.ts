@@ -205,7 +205,6 @@ export async function fetchPriceHistory(
       cafeRecordName:
         (record.fields.cafeReference?.value as CloudKit.Reference)
           ?.recordName || "",
-      drinks,
     };
   });
 }
