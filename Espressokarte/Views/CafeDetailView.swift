@@ -17,6 +17,7 @@ struct CafeDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var locationManager = LocationManager.shared
+    @StateObject private var drinkFilter = DrinkFilterManager.shared
 
     @State private var showUpdatePrice = false
 
@@ -30,7 +31,7 @@ struct CafeDetailView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     // Header with price
-                    CafeDetailHeader(cafe: cafe)
+                    CafeDetailHeader(cafe: cafe, drinkName: drinkFilter.selectedDrink)
 
                     // Map preview
                     CafeMapPreview(cafe: cafe)
@@ -48,7 +49,7 @@ struct CafeDetailView: View {
 
                     // Price history
                     if !cafe.priceHistory.isEmpty {
-                        PriceHistorySection(priceHistory: cafe.priceHistory)
+                        PriceHistorySection(priceHistory: cafe.priceHistory, drinkName: drinkFilter.selectedDrink)
                     }
 
                     // Update price button - only enabled when user is at the cafe
@@ -98,11 +99,20 @@ struct CafeDetailView: View {
 /// Header showing the cafe name and current price
 struct CafeDetailHeader: View {
     let cafe: Cafe
+    var drinkName: String = "Espresso"
+    
+    private var displayPrice: String? {
+        cafe.formattedPrice(for: drinkName) ?? cafe.formattedPrice
+    }
+    
+    private var numericPrice: Double? {
+        cafe.price(for: drinkName) ?? cafe.currentPrice
+    }
 
     var body: some View {
         VStack(spacing: 12) {
             // Large price display
-            if let price = cafe.formattedPrice {
+            if let price = displayPrice {
                 Text(price)
                     .font(.system(size: 64, weight: .bold, design: .rounded))
                     .foregroundColor(priceColor)
@@ -112,7 +122,7 @@ struct CafeDetailHeader: View {
                     .foregroundColor(.secondary)
             }
 
-            Text("Espresso")
+            Text(drinkName)
                 .font(.title3)
                 .foregroundColor(.secondary)
         }
@@ -122,13 +132,19 @@ struct CafeDetailHeader: View {
     }
 
     private var priceColor: Color {
-        guard let price = cafe.currentPrice else { return .gray }
+        guard let price = numericPrice else {
+            return Color(red: 0.55, green: 0.55, blue: 0.55)
+        }
 
         switch price {
-        case ..<2.0: return .green
-        case 2.0..<2.50: return .blue
-        case 2.50..<3.0: return .orange
-        default: return .red
+        case ..<2.0:
+            return Color(red: 0.545, green: 0.604, blue: 0.482)  // Sage #8B9A7B
+        case 2.0..<2.50:
+            return Color(red: 0.769, green: 0.584, blue: 0.416)  // Caramel #C4956A
+        case 2.50..<3.0:
+            return Color(red: 0.722, green: 0.463, blue: 0.318)  // Terracotta #B87651
+        default:
+            return Color(red: 0.365, green: 0.251, blue: 0.216)  // Espresso #5D4037
         }
     }
 }
@@ -243,15 +259,29 @@ struct LatestUpdateCard: View {
 /// Section showing price history
 struct PriceHistorySection: View {
     let priceHistory: [PriceRecord]
+    var drinkName: String = "Espresso"
+    
+    private var filteredHistory: [PriceRecord] {
+        priceHistory
+            .filter { $0.price(for: drinkName) != nil }
+            .sorted(by: { $0.date > $1.date })
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Price History")
+            Text("\(drinkName) Price History")
                 .font(.headline)
                 .padding(.horizontal)
 
-            ForEach(priceHistory.sorted(by: { $0.date > $1.date })) { record in
-                PriceHistoryRow(record: record)
+            if filteredHistory.isEmpty {
+                Text("No \(drinkName.lowercased()) prices recorded")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal)
+            } else {
+                ForEach(filteredHistory) { record in
+                    PriceHistoryRow(record: record, drinkName: drinkName)
+                }
             }
         }
     }
@@ -260,6 +290,11 @@ struct PriceHistorySection: View {
 /// Single row in price history
 struct PriceHistoryRow: View {
     let record: PriceRecord
+    var drinkName: String = "Espresso"
+    
+    private var displayPrice: String {
+        record.formattedPrice(for: drinkName) ?? record.formattedPrice
+    }
 
     var body: some View {
         HStack {
@@ -281,7 +316,7 @@ struct PriceHistoryRow: View {
 
             Spacer()
 
-            Text(record.formattedPrice)
+            Text(displayPrice)
                 .font(.title3)
                 .fontWeight(.semibold)
         }

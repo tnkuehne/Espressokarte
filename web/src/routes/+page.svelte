@@ -4,7 +4,7 @@
 	import { initCloudKit, fetchAllCafes, fetchPriceHistory, fetchAllPriceRecords } from '$lib/cloudkit';
 	import { initMapKit, createMap, addCafesToMap } from '$lib/mapkit';
 	import type { Cafe, PriceRecord } from '$lib/types';
-	import { formatPrice, getPriceCategory } from '$lib/types';
+	import { formatPrice, getPriceCategory, findDrinkPrice } from '$lib/types';
 	import type { Attachment } from 'svelte/attachments';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
 	import MapPin from '@lucide/svelte/icons/map-pin';
@@ -76,8 +76,6 @@
 	let selectedCafe = $state<Cafe | null>(null);
 	let priceHistory = $state<PriceRecord[]>([]);
 	let loadingHistory = $state(false);
-
-	let priceCategory = $derived(selectedCafe ? getPriceCategory(selectedCafe.currentPrice) : 'no-price');
 
 	async function handleCafeClick(cafe: Cafe) {
 		selectedCafe = cafe;
@@ -213,11 +211,15 @@
 <Sheet.Root bind:open={sheetOpen}>
 	<Sheet.Content side="right" class="w-full sm:max-w-md overflow-y-auto p-0">
 		{#if selectedCafe}
+			{@const filteredHistory = priceHistory.filter(r => findDrinkPrice(r.drinks, selectedDrink) !== null)}
+			{@const sheetPrice = filteredHistory[0] ? findDrinkPrice(filteredHistory[0].drinks, selectedDrink) : null}
+			{@const sheetPriceCategory = getPriceCategory(sheetPrice)}
 			<!-- Header with gradient background -->
 			<div class="bg-gradient-to-br from-primary/10 to-primary/5 px-6 pt-12 pb-6">
-				<Badge variant={priceCategory} class="text-2xl font-bold px-5 py-2.5 mb-4">
-					{formatPrice(selectedCafe.currentPrice)}
+				<Badge variant={sheetPriceCategory} class="text-2xl font-bold px-5 py-2.5 mb-2">
+					{formatPrice(sheetPrice)}
 				</Badge>
+				<p class="text-sm text-muted-foreground mb-4">{selectedDrink}</p>
 				<h2 class="text-2xl font-semibold tracking-tight">{selectedCafe.name}</h2>
 				<p class="flex items-center gap-1.5 text-muted-foreground mt-2">
 					<MapPin class="h-4 w-4 shrink-0" />
@@ -231,21 +233,21 @@
 				<div>
 					<h3 class="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
 						<History class="h-4 w-4" />
-						Price History
+						{selectedDrink} Price History
 					</h3>
 
 					{#if loadingHistory}
 						<div class="flex items-center justify-center py-12">
 							<Loader2 class="h-5 w-5 animate-spin text-muted-foreground" />
 						</div>
-					{:else if priceHistory.length === 0}
+					{:else if filteredHistory.length === 0}
 						<div class="text-center py-8 bg-muted/30 rounded-lg">
-							<p class="text-muted-foreground text-sm">No price history yet</p>
+							<p class="text-muted-foreground text-sm">No {selectedDrink.toLowerCase()} prices recorded</p>
 						</div>
 					{:else}
 						<div class="space-y-3">
-							{#each priceHistory as record (record.id)}
-								<PriceHistoryItem {record} />
+							{#each filteredHistory as record (record.id)}
+								<PriceHistoryItem {record} drinkName={selectedDrink} />
 							{/each}
 						</div>
 					{/if}

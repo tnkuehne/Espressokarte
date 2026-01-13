@@ -93,6 +93,23 @@ struct PriceRecord: Identifiable, Codable, Hashable {
         guard let price = espressoPrice else { return "—" }
         return String(format: "€%.2f", price)
     }
+    
+    /// Gets price for a specific drink
+    func price(for drinkName: String) -> Double? {
+        if let drink = drinks.first(where: { $0.name.lowercased() == drinkName.lowercased() }) {
+            return drink.price
+        }
+        if let drink = drinks.first(where: { $0.name.lowercased().contains(drinkName.lowercased()) }) {
+            return drink.price
+        }
+        return nil
+    }
+    
+    /// Formatted price for a specific drink
+    func formattedPrice(for drinkName: String) -> String? {
+        guard let price = price(for: drinkName) else { return nil }
+        return String(format: "€%.2f", price)
+    }
 
     /// Formatted date string
     var formattedDate: String {
