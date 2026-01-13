@@ -35,7 +35,7 @@ const priceResultSchema = z.object({
 	drinks: z
 		.array(drinkPriceSchema)
 		.describe(
-			'All coffee drinks found on the menu with their prices. Include espresso, doppio, double espresso, americano, cappuccino, flat white, latte, macchiato, cortado, mocha, filter coffee, and any other coffee-based drinks.',
+			'All coffee drinks found on the menu with their prices. Include espresso, doppio, americano, cappuccino, flat white, latte, macchiato, cortado, mocha, filter coffee, and any other coffee-based drinks. Note: "double espresso" should be normalized to "Doppio".',
 		),
 });
 
