@@ -1,11 +1,12 @@
 <script lang="ts">
     import type { PriceRecord } from "$lib/types";
-    import { formatPrice, formatDate, getPriceCategory } from "$lib/types";
+    import { formatPrice, formatDate, getPriceCategory, findEspressoPrice } from "$lib/types";
     import { Badge } from "./ui/badge";
 
     let { record }: { record: PriceRecord } = $props();
 
-    let priceCategory = $derived(getPriceCategory(record.price));
+    let espressoPrice = $derived(findEspressoPrice(record.drinks));
+    let priceCategory = $derived(getPriceCategory(espressoPrice));
 </script>
 
 <div class="bg-muted/40 rounded-lg p-4 hover:bg-muted/60 transition-colors">
@@ -25,7 +26,7 @@
             {/if}
         </div>
         <Badge variant={priceCategory} class="shrink-0">
-            {formatPrice(record.price)}
+            {formatPrice(espressoPrice)}
         </Badge>
     </div>
 </div>
