@@ -9,16 +9,32 @@ export interface Cafe {
 	currentPrice: number | null;
 }
 
+export interface DrinkPrice {
+	name: string;
+	price: number;
+}
+
 export interface PriceRecord {
 	id: string;
 	recordName: string;
-	price: number;
+	drinks: DrinkPrice[];
 	date: Date;
 	addedBy: string;
 	addedByName: string;
 	note: string | null;
 	menuImageUrl: string | null;
 	cafeRecordName: string;
+}
+
+export function findEspressoPrice(drinks: DrinkPrice[]): number | null {
+	const exact = drinks.find((d) => d.name.toLowerCase() === 'espresso');
+	if (exact) return exact.price;
+
+	const partial = drinks.find((d) => {
+		const name = d.name.toLowerCase();
+		return name.includes('espresso') && !name.includes('double') && !name.includes('doppio');
+	});
+	return partial?.price ?? null;
 }
 
 export type PriceCategory = 'cheap' | 'medium' | 'expensive' | 'very-expensive' | 'no-price';

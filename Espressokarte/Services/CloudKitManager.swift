@@ -173,12 +173,17 @@ final class CloudKitManager: ObservableObject {
 
     // MARK: - Adding/Updating Data
 
-    /// Adds a new cafe or updates an existing one with a new price
-    func addOrUpdateCafe(_ cafe: Cafe, price: Double, note: String?, menuImageData: Data? = nil)
+    /// Adds a new cafe or updates an existing one with drink prices
+    func addOrUpdateCafe(_ cafe: Cafe, drinks: [DrinkPrice], note: String?, menuImageData: Data? = nil)
         async throws -> Cafe
     {
-        // Validate price before proceeding
-        if let validationError = PriceRecord.validate(price: price) {
+        // Derive espresso price from drinks for validation and storage
+        guard let espressoPrice = Self.findEspressoPrice(in: drinks) else {
+            throw CloudKitError.invalidPrice(.invalid)
+        }
+        
+        // Validate espresso price before proceeding
+        if let validationError = PriceRecord.validate(price: espressoPrice) {
             throw CloudKitError.invalidPrice(validationError)
         }
 
@@ -215,8 +220,8 @@ final class CloudKitManager: ObservableObject {
             cafeRecord["longitude"] = cafe.longitude
         }
 
-        // Update current price
-        cafeRecord["currentPrice"] = price
+        // Update current price (espresso price for map display)
+        cafeRecord["currentPrice"] = espressoPrice
 
         // Save cafe record
         try await publicDatabase.save(cafeRecord)
@@ -224,13 +229,18 @@ final class CloudKitManager: ObservableObject {
         // Create price record
         let priceRecordID = CKRecord.ID(recordName: UUID().uuidString)
         let priceRecord = CKRecord(recordType: priceRecordType, recordID: priceRecordID)
-        priceRecord["price"] = price
         priceRecord["date"] = Date()
         priceRecord["addedBy"] = currentUserRecordID
         priceRecord["addedByName"] = currentUserName
         priceRecord["note"] = note
         priceRecord["cafeReference"] = CKRecord.Reference(
             recordID: cafeRecord.recordID, action: .deleteSelf)
+
+        // Save drinks as JSON string
+        if let drinksData = try? JSONEncoder().encode(drinks),
+           let drinksJSON = String(data: drinksData, encoding: .utf8) {
+            priceRecord["drinksJSON"] = drinksJSON
+        }
 
         // Save menu image as CKAsset if provided
         if let imageData = menuImageData {
@@ -306,8 +316,7 @@ final class CloudKitManager: ObservableObject {
 
     /// Converts a CKRecord to a PriceRecord model
     private func priceRecordFrom(record: CKRecord) -> PriceRecord? {
-        guard let price = record["price"] as? Double,
-            let date = record["date"] as? Date,
+        guard let date = record["date"] as? Date,
             let addedBy = record["addedBy"] as? String,
             let addedByName = record["addedByName"] as? String
         else {
@@ -324,15 +333,40 @@ final class CloudKitManager: ObservableObject {
             menuImageData = try? Data(contentsOf: fileURL)
         }
 
+        // Load drinks from JSON string
+        var drinks: [DrinkPrice] = []
+        if let drinksJSON = record["drinksJSON"] as? String,
+           let drinksData = drinksJSON.data(using: .utf8),
+           let decoded = try? JSONDecoder().decode([DrinkPrice].self, from: drinksData) {
+            drinks = decoded
+        } else if let legacyPrice = record["price"] as? Double {
+            // Backward compatibility: convert legacy price-only records to drinks array
+            drinks = [DrinkPrice(name: "Espresso", price: legacyPrice)]
+        }
+
         return PriceRecord(
             id: record.recordID.recordName,
-            price: price,
             date: date,
             addedBy: addedBy,
             addedByName: addedByName,
             note: note,
-            menuImageData: menuImageData
+            menuImageData: menuImageData,
+            drinks: drinks
         )
+    }
+    
+    /// Helper to find espresso price from drinks array
+    static func findEspressoPrice(in drinks: [DrinkPrice]) -> Double? {
+        if let espresso = drinks.first(where: { $0.name.lowercased() == "espresso" }) {
+            return espresso.price
+        }
+        if let espresso = drinks.first(where: { 
+            let name = $0.name.lowercased()
+            return name.contains("espresso") && !name.contains("double") && !name.contains("doppio")
+        }) {
+            return espresso.price
+        }
+        return nil
     }
 
     // MARK: - Subscriptions

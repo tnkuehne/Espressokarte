@@ -23,7 +23,7 @@ struct AddPriceView: View {
     @StateObject private var priceExtractionService = PriceExtractionService.shared
 
     @State private var selectedCafe: MapItemData?
-    @State private var extractedPrice: Double?
+    @State private var extractedDrinks: [DrinkPrice] = []
     @State private var capturedImage: UIImage?
     @State private var searchQuery = ""
     @State private var isSaving = false
@@ -40,7 +40,7 @@ struct AddPriceView: View {
                     SelectedCafeHeader(cafe: cafe) {
                         withAnimation {
                             selectedCafe = nil
-                            extractedPrice = nil
+                            extractedDrinks = []
                             capturedImage = nil
                         }
                     }
@@ -49,7 +49,7 @@ struct AddPriceView: View {
                 // Price capture section (when cafe is selected)
                 if selectedCafe != nil {
                     PriceCaptureSection(
-                        extractedPrice: $extractedPrice,
+                        extractedDrinks: $extractedDrinks,
                         isSignedIn: appleSignInManager.isSignedIn,
                         isProcessing: priceExtractionService.isProcessing,
                         onSignIn: signInWithApple,
@@ -79,7 +79,7 @@ struct AddPriceView: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    if selectedCafe != nil && extractedPrice != nil {
+                    if selectedCafe != nil && CloudKitManager.findEspressoPrice(in: extractedDrinks) != nil {
                         Button("Save") {
                             savePrice()
                         }
@@ -177,12 +177,16 @@ struct AddPriceView: View {
     private func extractPriceFromImage(_ image: UIImage) {
         Task {
             do {
-                let price = try await priceExtractionService.extractPrice(from: image)
-                if let price = price {
-                    extractedPrice = price
-                    capturedImage = image
-                } else {
-                    errorMessage = "Could not find espresso price in the image. Please try again."
+                let result = try await priceExtractionService.extractPrices(from: image)
+                extractedDrinks = result.drinks
+                capturedImage = image
+                
+                if result.espressoPrice == nil {
+                    if result.drinks.isEmpty {
+                        errorMessage = "Could not find any drink prices in the image. Please try again."
+                    } else {
+                        errorMessage = "Found \(result.drinks.count) drinks but no espresso. Please try again."
+                    }
                     showError = true
                 }
             } catch {
@@ -193,7 +197,7 @@ struct AddPriceView: View {
     }
 
     private func savePrice() {
-        guard let cafe = selectedCafe, let price = extractedPrice else {
+        guard let cafe = selectedCafe, !extractedDrinks.isEmpty else {
             return
         }
 
@@ -205,7 +209,7 @@ struct AddPriceView: View {
                 // Compress image to JPEG for storage
                 let imageData = capturedImage?.jpegData(compressionQuality: 0.7)
                 _ = try await cloudKitManager.addOrUpdateCafe(
-                    cafeModel, price: price, note: nil, menuImageData: imageData)
+                    cafeModel, drinks: extractedDrinks, note: nil, menuImageData: imageData)
 
                 await MainActor.run {
                     isSaving = false
@@ -253,11 +257,15 @@ struct SelectedCafeHeader: View {
 
 /// Section for capturing and displaying price via camera
 struct PriceCaptureSection: View {
-    @Binding var extractedPrice: Double?
+    @Binding var extractedDrinks: [DrinkPrice]
     let isSignedIn: Bool
     let isProcessing: Bool
     let onSignIn: () -> Void
     let onTakePhoto: () -> Void
+    
+    private var espressoPrice: Double? {
+        CloudKitManager.findEspressoPrice(in: extractedDrinks)
+    }
 
     var body: some View {
         VStack(spacing: 20) {
@@ -272,7 +280,7 @@ struct PriceCaptureSection: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
-            } else if let price = extractedPrice {
+            } else if let price = espressoPrice {
                 // Price found - display it
                 VStack(spacing: 8) {
                     Text(String(format: "%.2f", price))
@@ -288,6 +296,25 @@ struct PriceCaptureSection: View {
                 .cornerRadius(16)
 
                 // Option to retake
+                Button {
+                    onTakePhoto()
+                } label: {
+                    Label("Take New Photo", systemImage: "camera")
+                        .font(.subheadline)
+                }
+            } else if !extractedDrinks.isEmpty {
+                // Drinks found but no espresso
+                VStack(spacing: 8) {
+                    Text("No espresso found")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    Text("Found \(extractedDrinks.count) other drinks")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+
                 Button {
                     onTakePhoto()
                 } label: {

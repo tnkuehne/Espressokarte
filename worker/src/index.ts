@@ -26,8 +26,17 @@ interface RequestBody {
 }
 
 // Zod schema for price extraction
+const drinkPriceSchema = z.object({
+	name: z.string().describe('The drink name as shown on the menu, normalized to standard names like "Espresso", "Doppio", "Americano", "Cappuccino", "Flat White", "Latte", "Macchiato", "Cortado", "Mocha", "Filter Coffee" etc.'),
+	price: z.number().describe('The price as a decimal number, e.g. 2.80'),
+});
+
 const priceResultSchema = z.object({
-	price: z.number().nullable().describe('The espresso price as a decimal number, e.g. 2.80. Null if not found.'),
+	drinks: z
+		.array(drinkPriceSchema)
+		.describe(
+			'All coffee drinks found on the menu with their prices. Include espresso, doppio, americano, cappuccino, flat white, latte, macchiato, cortado, mocha, filter coffee, and any other coffee-based drinks. Note: "double espresso" should be normalized to "Doppio".',
+		),
 });
 
 type PriceResult = z.infer<typeof priceResultSchema>;
@@ -124,7 +133,11 @@ async function extractPriceFromImage(apiKey: string, imageBase64: string, mediaT
 						},
 					},
 					{
-						text: `Look at this cafe menu image. Find the price for an espresso (not double espresso, not cappuccino, just a regular single espresso). Return the price as a number (e.g., 2.80) or null if not found.`,
+						text: `Look at this cafe menu image and extract all coffee drink prices you can find.
+
+Return a "drinks" array with ALL coffee drinks and their prices. Normalize drink names to standard terms: "Espresso", "Doppio", "Americano", "Cappuccino", "Flat White", "Latte", "Macchiato", "Cortado", "Mocha", "Filter Coffee", etc.
+
+If a drink has size variants, use the smallest/default size price. Return an empty array if no coffee drinks are found.`,
 					},
 				],
 			},

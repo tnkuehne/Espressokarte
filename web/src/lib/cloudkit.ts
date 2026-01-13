@@ -1,4 +1,4 @@
-import type { Cafe, PriceRecord } from "./types";
+import type { Cafe, PriceRecord, DrinkPrice } from "./types";
 import { dev } from "$app/environment";
 
 const CONTAINER_IDENTIFIER = "iCloud.com.timokuehne.Espressokarte";
@@ -125,10 +125,28 @@ export async function fetchPriceHistory(
 
   return response.records.map((record) => {
     const asset = record.fields.menuImage?.value as CloudKit.Asset | undefined;
+
+    // Parse drinks from JSON, with backward compatibility for legacy price field
+    let drinks: DrinkPrice[] = [];
+    const drinksJSON = record.fields.drinksJSON?.value as string | undefined;
+    if (drinksJSON) {
+      try {
+        drinks = JSON.parse(drinksJSON) as DrinkPrice[];
+      } catch {
+        drinks = [];
+      }
+    } else {
+      // Legacy record: convert price field to drinks array
+      const legacyPrice = record.fields.price?.value as number | undefined;
+      if (legacyPrice !== undefined) {
+        drinks = [{ name: "Espresso", price: legacyPrice }];
+      }
+    }
+
     return {
       id: record.recordName,
       recordName: record.recordName,
-      price: (record.fields.price?.value as number) || 0,
+      drinks,
       date: new Date((record.fields.date?.value as number) || Date.now()),
       addedBy: (record.fields.addedBy?.value as string) || "",
       addedByName: (record.fields.addedByName?.value as string) || "Anonymous",

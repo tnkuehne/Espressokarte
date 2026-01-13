@@ -56,9 +56,6 @@ struct PriceRecord: Identifiable, Codable, Hashable {
     /// Unique identifier for this price record
     let id: String
 
-    /// The espresso price in euros
-    let price: Double
-
     /// When this price was recorded
     let date: Date
 
@@ -74,9 +71,27 @@ struct PriceRecord: Identifiable, Codable, Hashable {
     /// Optional menu image data (JPEG compressed)
     let menuImageData: Data?
 
-    /// Formatted price string
+    /// All drink prices extracted from the menu
+    let drinks: [DrinkPrice]
+
+    /// The espresso price derived from drinks array
+    var espressoPrice: Double? {
+        if let espresso = drinks.first(where: { $0.name.lowercased() == "espresso" }) {
+            return espresso.price
+        }
+        if let espresso = drinks.first(where: { 
+            let name = $0.name.lowercased()
+            return name.contains("espresso") && !name.contains("double") && !name.contains("doppio")
+        }) {
+            return espresso.price
+        }
+        return nil
+    }
+
+    /// Formatted espresso price string
     var formattedPrice: String {
-        String(format: "€%.2f", price)
+        guard let price = espressoPrice else { return "—" }
+        return String(format: "€%.2f", price)
     }
 
     /// Formatted date string
@@ -96,19 +111,19 @@ struct PriceRecord: Identifiable, Codable, Hashable {
 
     init(
         id: String = UUID().uuidString,
-        price: Double,
         date: Date = Date(),
         addedBy: String,
         addedByName: String,
         note: String? = nil,
-        menuImageData: Data? = nil
+        menuImageData: Data? = nil,
+        drinks: [DrinkPrice] = []
     ) {
         self.id = id
-        self.price = price
         self.date = date
         self.addedBy = addedBy
         self.addedByName = addedByName
         self.note = note
         self.menuImageData = menuImageData
+        self.drinks = drinks
     }
 }

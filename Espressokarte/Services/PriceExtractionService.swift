@@ -24,6 +24,13 @@ final class PriceExtractionService: ObservableObject {
     /// Extract espresso price from a menu image
     /// - Returns: The extracted price, or nil if no price was found
     func extractPrice(from image: UIImage) async throws -> Double? {
+        let result = try await extractPrices(from: image)
+        return result.espressoPrice
+    }
+
+    /// Extract all drink prices from a menu image
+    /// - Returns: Full extraction result with espresso price and all drinks found
+    func extractPrices(from image: UIImage) async throws -> PriceExtractionResult {
         isProcessing = true
         defer { isProcessing = false }
 
@@ -83,7 +90,9 @@ final class PriceExtractionService: ObservableObject {
         // Parse successful response
         let result = try JSONDecoder().decode(PriceResponse.self, from: data)
 
-        return result.price
+        return PriceExtractionResult(
+            drinks: result.drinks ?? []
+        )
     }
 
     // MARK: - Private Helpers
@@ -103,10 +112,36 @@ final class PriceExtractionService: ObservableObject {
 
 // MARK: - Response Types
 
+struct DrinkPrice: Codable, Sendable, Hashable {
+    let name: String
+    let price: Double
+}
+
+struct PriceExtractionResult: Sendable {
+    let drinks: [DrinkPrice]
+    
+    /// Find espresso price from the drinks array
+    var espressoPrice: Double? {
+        // Look for exact "Espresso" first, then partial matches
+        if let espresso = drinks.first(where: { $0.name.lowercased() == "espresso" }) {
+            return espresso.price
+        }
+        // Fallback: find any drink containing "espresso" but not "double" or "doppio"
+        if let espresso = drinks.first(where: { 
+            let name = $0.name.lowercased()
+            return name.contains("espresso") && !name.contains("double") && !name.contains("doppio")
+        }) {
+            return espresso.price
+        }
+        return nil
+    }
+}
+
 private struct PriceResponse: Decodable {
     let success: Bool?
     let price: Double?
     let confidence: String?
+    let drinks: [DrinkPrice]?
 }
 
 private struct ErrorResponse: Decodable {
