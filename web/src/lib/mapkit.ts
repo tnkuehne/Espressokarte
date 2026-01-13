@@ -106,15 +106,16 @@ export function createMap(container: HTMLElement): mapkit.Map {
 export function createCafeAnnotation(
   cafe: Cafe,
   onClick: (cafe: Cafe) => void,
+  price: number | null = cafe.currentPrice,
 ): mapkit.Annotation {
-  const category = getPriceCategory(cafe.currentPrice);
+  const category = getPriceCategory(price);
 
   const annotation = new window.mapkit.Annotation(
     new window.mapkit.Coordinate(cafe.latitude, cafe.longitude),
     () => {
       const element = document.createElement("div");
       element.className = `price-marker ${category}`;
-      element.textContent = formatPrice(cafe.currentPrice);
+      element.textContent = formatPrice(price);
       return element;
     },
     {
@@ -133,11 +134,15 @@ export function addCafesToMap(
   map: mapkit.Map,
   cafes: Cafe[],
   onClick: (cafe: Cafe) => void,
+  cafePrices?: Map<string, number | null>,
 ): mapkit.Annotation[] {
   // Clear existing annotations
   map.removeAnnotations(map.annotations);
 
-  const annotations = cafes.map((cafe) => createCafeAnnotation(cafe, onClick));
+  const annotations = cafes.map((cafe) => {
+    const price = cafePrices?.get(cafe.id) ?? cafe.currentPrice;
+    return createCafeAnnotation(cafe, onClick, price);
+  });
   map.addAnnotations(annotations);
 
   // Zoom to show all cafes if there are any

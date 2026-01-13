@@ -24,6 +24,7 @@ export interface PriceRecord {
 	note: string | null;
 	menuImageUrl: string | null;
 	cafeRecordName: string;
+	drinks: DrinkPrice[];
 }
 
 export function findEspressoPrice(drinks: DrinkPrice[]): number | null {
