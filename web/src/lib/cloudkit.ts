@@ -101,6 +101,56 @@ export async function fetchCafe(recordName: string): Promise<Cafe | null> {
   }
 }
 
+export async function fetchAllPriceRecords(): Promise<PriceRecord[]> {
+  if (!cloudKitConfigured) {
+    throw new Error("CloudKit not initialized");
+  }
+
+  const container = window.CloudKit.getDefaultContainer();
+  const database = container.publicCloudDatabase;
+
+  const response = await database.performQuery({
+    recordType: "PriceRecord",
+    sortBy: [{ fieldName: "date", ascending: false }],
+  });
+
+  return response.records.map((record) => {
+    const asset = record.fields.menuImage?.value as CloudKit.Asset | undefined;
+    const drinksJSON = record.fields.drinksJSON?.value as string | undefined;
+    let drinks: { name: string; price: number }[] = [];
+
+    if (drinksJSON) {
+      try {
+        drinks = JSON.parse(drinksJSON);
+      } catch {
+        // Fallback to legacy price field
+      }
+    }
+
+    if (drinks.length === 0) {
+      const legacyPrice = record.fields.price?.value as number | undefined;
+      if (legacyPrice) {
+        drinks = [{ name: "Espresso", price: legacyPrice }];
+      }
+    }
+
+    return {
+      id: record.recordName,
+      recordName: record.recordName,
+      price: (record.fields.price?.value as number) || 0,
+      date: new Date((record.fields.date?.value as number) || Date.now()),
+      addedBy: (record.fields.addedBy?.value as string) || "",
+      addedByName: (record.fields.addedByName?.value as string) || "Anonymous",
+      note: (record.fields.note?.value as string) || null,
+      menuImageUrl: asset?.downloadURL || null,
+      cafeRecordName:
+        (record.fields.cafeReference?.value as CloudKit.Reference)
+          ?.recordName || "",
+      drinks,
+    };
+  });
+}
+
 export async function fetchPriceHistory(
   cafeRecordName: string,
 ): Promise<PriceRecord[]> {
@@ -155,6 +205,7 @@ export async function fetchPriceHistory(
       cafeRecordName:
         (record.fields.cafeReference?.value as CloudKit.Reference)
           ?.recordName || "",
+      drinks,
     };
   });
 }

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { PUBLIC_MAPKIT_TOKEN, PUBLIC_CLOUDKIT_TOKEN } from '$env/static/public';
-	import { initCloudKit, fetchAllCafes, fetchPriceHistory } from '$lib/cloudkit';
+	import { initCloudKit, fetchAllCafes, fetchPriceHistory, fetchAllPriceRecords } from '$lib/cloudkit';
 	import { initMapKit, createMap, addCafesToMap } from '$lib/mapkit';
 	import type { Cafe, PriceRecord } from '$lib/types';
 	import { formatPrice, getPriceCategory } from '$lib/types';
@@ -9,16 +9,67 @@
 	import Loader2 from '@lucide/svelte/icons/loader-2';
 	import MapPin from '@lucide/svelte/icons/map-pin';
 	import History from '@lucide/svelte/icons/history';
+	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
+	import Coffee from '@lucide/svelte/icons/coffee';
 	import * as Sheet from '$lib/components/ui/sheet';
+	import * as Select from '$lib/components/ui/select';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import PriceHistoryItem from '$lib/components/PriceHistoryItem.svelte';
 
 	let cafes = $state<Cafe[]>([]);
+	let allPriceRecords = $state<PriceRecord[]>([]);
 	let mapReady = $state(false);
 	let cafesLoading = $state(true);
 	let error = $state<string | null>(null);
 	let map = $state<mapkit.Map | null>(null);
+
+	// Drink filter
+	let selectedDrink = $state('Espresso');
+	let availableDrinks = $derived(() => {
+		const drinkSet = new Set<string>();
+		for (const record of allPriceRecords) {
+			for (const drink of record.drinks) {
+				drinkSet.add(drink.name);
+			}
+		}
+		const sorted = Array.from(drinkSet).sort();
+		// Keep Espresso first
+		const espressoIndex = sorted.indexOf('Espresso');
+		if (espressoIndex > 0) {
+			sorted.splice(espressoIndex, 1);
+			sorted.unshift('Espresso');
+		}
+		return sorted.length > 0 ? sorted : ['Espresso'];
+	});
+
+	// Build a map of cafe ID -> price for selected drink
+	let cafePrices = $derived(() => {
+		const priceMap = new Map<string, number | null>();
+		
+		// Group records by cafe, get latest for each
+		const latestByCafe = new Map<string, PriceRecord>();
+		for (const record of allPriceRecords) {
+			const existing = latestByCafe.get(record.cafeRecordName);
+			if (!existing || record.date > existing.date) {
+				latestByCafe.set(record.cafeRecordName, record);
+			}
+		}
+		
+		for (const cafe of cafes) {
+			const latestRecord = latestByCafe.get(cafe.recordName);
+			if (latestRecord) {
+				const drink = latestRecord.drinks.find(
+					d => d.name.toLowerCase() === selectedDrink.toLowerCase() ||
+					     d.name.toLowerCase().includes(selectedDrink.toLowerCase())
+				);
+				priceMap.set(cafe.id, drink?.price ?? null);
+			} else {
+				priceMap.set(cafe.id, null);
+			}
+		}
+		return priceMap;
+	});
 
 	// Sheet state
 	let sheetOpen = $state(false);
@@ -56,25 +107,50 @@
 		};
 	}
 
+	// Track if initial zoom has happened
+	let hasInitialZoom = $state(false);
+
 	// Reactively add cafes to map when both are ready
 	$effect(() => {
 		if (map && cafes.length > 0) {
-			addCafesToMap(map, cafes, handleCafeClick);
+			const prices = cafePrices();
+			
+			// Clear and re-add annotations
+			map.removeAnnotations(map.annotations);
+			const annotations = cafes.map((cafe) => {
+				const price = prices.get(cafe.id) ?? cafe.currentPrice;
+				return createCafeAnnotation(cafe, handleCafeClick, price);
+			});
+			map.addAnnotations(annotations);
+			
+			// Only zoom on initial load
+			if (!hasInitialZoom && annotations.length > 0) {
+				map.showItems(annotations, {
+					animate: true,
+					padding: new window.mapkit.Padding(50, 50, 50, 50),
+				});
+				hasInitialZoom = true;
+			}
 		}
 	});
+
+	// Import createCafeAnnotation for the effect
+	import { createCafeAnnotation } from '$lib/mapkit';
 
 	onMount(async () => {
 		try {
 			// Start both initializations in parallel
-			// CloudKit path: init -> fetch cafes (doesn't need MapKit)
-			// MapKit path: init -> show map (doesn't need CloudKit)
-			const cafesPromise = initCloudKit(PUBLIC_CLOUDKIT_TOKEN).then(() => fetchAllCafes());
+			const cafesPromise = initCloudKit(PUBLIC_CLOUDKIT_TOKEN).then(() => 
+				Promise.all([fetchAllCafes(), fetchAllPriceRecords()])
+			);
 			const mapPromise = initMapKit(PUBLIC_MAPKIT_TOKEN).then(() => {
 				mapReady = true;
 			});
 
-			// Wait for cafes (map will show as soon as it's ready via mapReady state)
-			cafes = await cafesPromise;
+			// Wait for cafes and price records
+			const [fetchedCafes, fetchedRecords] = await cafesPromise;
+			cafes = fetchedCafes;
+			allPriceRecords = fetchedRecords;
 			cafesLoading = false;
 
 			// Ensure map is also ready before we finish
@@ -107,9 +183,24 @@
 		{:else}
 			<div {@attach mapAttachment()} class="w-full h-full"></div>
 
+			<!-- Drink filter - bottom left -->
+			<div class="absolute bottom-4 left-4">
+				<Select.Root type="single" bind:value={selectedDrink}>
+					<Select.Trigger class="w-[160px] bg-background/90 backdrop-blur-sm shadow-md">
+						<Coffee class="h-4 w-4 mr-2 shrink-0" />
+						<span class="truncate">{selectedDrink}</span>
+					</Select.Trigger>
+					<Select.Content>
+						{#each availableDrinks() as drink}
+							<Select.Item value={drink}>{drink}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+
 			<!-- Overlay for loading cafes -->
 			{#if cafesLoading}
-				<div class="absolute bottom-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-md flex items-center gap-2">
+				<div class="absolute bottom-4 right-4 bg-background/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-md flex items-center gap-2">
 					<Loader2 class="h-4 w-4 animate-spin text-primary" />
 					<span class="text-sm text-muted-foreground">Loading cafes...</span>
 				</div>
