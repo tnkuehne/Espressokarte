@@ -154,21 +154,21 @@ struct CafePriceMarker: View {
         .shadow(radius: 2)
     }
 
-    /// Color based on price (green = cheap, red = expensive)
+    /// Color based on price (coffee-inspired earthy palette)
     private var priceColor: Color {
         guard let price = cafe.currentPrice else {
-            return .gray
+            return Color(red: 0.55, green: 0.55, blue: 0.55)  // Warm gray
         }
 
         switch price {
         case ..<2.0:
-            return .green
+            return Color(red: 0.545, green: 0.604, blue: 0.482)  // Sage #8B9A7B
         case 2.0..<2.50:
-            return .blue
+            return Color(red: 0.769, green: 0.584, blue: 0.416)  // Caramel #C4956A
         case 2.50..<3.0:
-            return .orange
+            return Color(red: 0.722, green: 0.463, blue: 0.318)  // Terracotta #B87651
         default:
-            return .red
+            return Color(red: 0.365, green: 0.251, blue: 0.216)  // Espresso #5D4037
         }
     }
 }
