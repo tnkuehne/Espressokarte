@@ -10,10 +10,19 @@ import SwiftUI
 @main
 struct EspressokarteApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
 
     var body: some Scene {
         WindowGroup {
-            MapView()
+            if hasSeenWelcome {
+                MapView()
+            } else {
+                WelcomeView {
+                    withAnimation {
+                        hasSeenWelcome = true
+                    }
+                }
+            }
         }
     }
 }
