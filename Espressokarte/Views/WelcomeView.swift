@@ -40,7 +40,7 @@ struct WelcomeView: View {
                     icon: "camera.fill",
                     iconColor: .orange,
                     title: "Add Prices at the Cafe",
-                    description: "When you're at a cafe, snap a photo of the menu to add or update prices. You need to be within 100m."
+                    description: "When you're at a cafe, snap a photo of the menu to add or update prices."
                 )
 
                 WelcomeFeatureRow(
