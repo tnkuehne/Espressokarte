@@ -141,6 +141,7 @@ async function extractPriceFromImage(env: Env, imageBase64: string, mediaType: s
 	// Initialize Google GenAI with AI Gateway base URL
 	// BYOK: API key is stored in AI Gateway
 	const ai = new GoogleGenAI({
+		apiKey: 'empty because of cf byok',
 		httpOptions: {
 			baseUrl,
 			headers,
