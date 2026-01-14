@@ -30,7 +30,11 @@ interface RequestBody {
 
 // Zod schema for price extraction
 const drinkPriceSchema = z.object({
-	name: z.string().describe('The drink name as shown on the menu, normalized to standard names like "Espresso", "Doppio", "Americano", "Cappuccino", "Flat White", "Latte", "Macchiato", "Cortado", "Mocha", "Filter Coffee" etc.'),
+	name: z
+		.string()
+		.describe(
+			'The drink name as shown on the menu, normalized to standard names like "Espresso", "Doppio", "Americano", "Cappuccino", "Flat White", "Latte", "Macchiato", "Cortado", "Mocha", "Filter Coffee" etc.',
+		),
 	price: z.number().describe('The price as a decimal number, e.g. 2.80'),
 });
 
@@ -135,9 +139,8 @@ async function extractPriceFromImage(env: Env, imageBase64: string, mediaType: s
 	}
 
 	// Initialize Google GenAI with AI Gateway base URL
-	// BYOK: API key is stored in AI Gateway, so we pass an empty string
+	// BYOK: API key is stored in AI Gateway
 	const ai = new GoogleGenAI({
-		apiKey: '', // Not needed with BYOK - key is stored in AI Gateway
 		httpOptions: {
 			baseUrl,
 			headers,
