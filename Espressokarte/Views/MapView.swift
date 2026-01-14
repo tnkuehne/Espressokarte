@@ -21,6 +21,13 @@ struct MapView: View {
     @State private var shouldRefreshAfterAdd = false
     @State private var showDrinkFilter = false
 
+    /// Cafes filtered to only those that have the selected drink
+    private var filteredCafes: [Cafe] {
+        cloudKitManager.cafes.filter { cafe in
+            cafe.price(for: drinkFilter.selectedDrink) != nil
+        }
+    }
+
     var body: some View {
         ZStack {
             // Map with cafe annotations
@@ -28,14 +35,18 @@ struct MapView: View {
                 // User location
                 UserAnnotation()
 
-                // Cafe markers with prices
-                ForEach(cloudKitManager.cafes) { cafe in
+                // Cafe markers with prices - only show cafes that have the selected drink
+                ForEach(filteredCafes) { cafe in
                     Annotation(
                         cafe.name,
                         coordinate: cafe.coordinate,
                         anchor: .bottom
                     ) {
-                        CafePriceMarker(cafe: cafe, drinkName: drinkFilter.selectedDrink)
+                        CafePriceMarker(
+                            cafe: cafe,
+                            drinkName: drinkFilter.selectedDrink,
+                            priceStats: drinkFilter.currentDrinkStats
+                        )
                     }
                     .tag(cafe)
                 }
@@ -169,13 +180,16 @@ struct MapView: View {
 struct CafePriceMarker: View {
     let cafe: Cafe
     var drinkName: String = "Espresso"
-    
+    var priceStats: DrinkPriceStats?
+
+    /// Price for the specific drink only - no fallback
     private var displayPrice: String {
-        cafe.formattedPrice(for: drinkName) ?? cafe.formattedPrice ?? "?"
+        cafe.formattedPrice(for: drinkName) ?? "?"
     }
-    
+
+    /// Numeric price for the specific drink only - no fallback
     private var numericPrice: Double? {
-        cafe.price(for: drinkName) ?? cafe.currentPrice
+        cafe.price(for: drinkName)
     }
 
     var body: some View {
@@ -197,21 +211,36 @@ struct CafePriceMarker: View {
         .shadow(radius: 2)
     }
 
-    /// Color based on price (coffee-inspired earthy palette)
+    /// Color palette for price categories (coffee-inspired earthy palette)
+    private static let categoryColors: [Color] = [
+        Color(red: 0.545, green: 0.604, blue: 0.482),  // Sage #8B9A7B - cheap
+        Color(red: 0.769, green: 0.584, blue: 0.416),  // Caramel #C4956A - medium
+        Color(red: 0.722, green: 0.463, blue: 0.318),  // Terracotta #B87651 - expensive
+        Color(red: 0.365, green: 0.251, blue: 0.216)   // Espresso #5D4037 - very expensive
+    ]
+
+    /// Color based on price relative to the drink's price range
     private var priceColor: Color {
         guard let price = numericPrice else {
-            return Color(red: 0.55, green: 0.55, blue: 0.55)  // Warm gray
+            return Color(red: 0.55, green: 0.55, blue: 0.55)  // Warm gray for no price
         }
 
+        // Use dynamic price stats if available
+        if let stats = priceStats {
+            let category = stats.category(for: price)
+            return Self.categoryColors[category]
+        }
+
+        // Fallback to hardcoded ranges only if no stats available
         switch price {
         case ..<2.0:
-            return Color(red: 0.545, green: 0.604, blue: 0.482)  // Sage #8B9A7B
+            return Self.categoryColors[0]
         case 2.0..<2.50:
-            return Color(red: 0.769, green: 0.584, blue: 0.416)  // Caramel #C4956A
+            return Self.categoryColors[1]
         case 2.50..<3.0:
-            return Color(red: 0.722, green: 0.463, blue: 0.318)  // Terracotta #B87651
+            return Self.categoryColors[2]
         default:
-            return Color(red: 0.365, green: 0.251, blue: 0.216)  // Espresso #5D4037
+            return Self.categoryColors[3]
         }
     }
 }

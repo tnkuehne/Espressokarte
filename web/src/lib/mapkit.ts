@@ -1,5 +1,5 @@
-import type { Cafe } from "./types";
-import { getPriceCategory, formatPrice } from "./types";
+import type { Cafe, DrinkPriceStats } from "./types";
+import { getPriceCategoryWithStats, formatPrice } from "./types";
 
 let mapKitInitialized = false;
 let initPromise: Promise<void> | null = null;
@@ -107,8 +107,9 @@ export function createCafeAnnotation(
   cafe: Cafe,
   onClick: (cafe: Cafe) => void,
   price: number | null = cafe.currentPrice,
+  priceStats: DrinkPriceStats | null = null,
 ): mapkit.Annotation {
-  const category = getPriceCategory(price);
+  const category = getPriceCategoryWithStats(price, priceStats);
 
   const annotation = new window.mapkit.Annotation(
     new window.mapkit.Coordinate(cafe.latitude, cafe.longitude),

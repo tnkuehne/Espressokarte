@@ -47,6 +47,63 @@ export function findDrinkPrice(drinks: DrinkPrice[], drinkName: string): number 
 
 export type PriceCategory = 'cheap' | 'medium' | 'expensive' | 'very-expensive' | 'no-price';
 
+/** Price range statistics for a drink type */
+export interface DrinkPriceStats {
+	minPrice: number;
+	maxPrice: number;
+	q1: number; // 25th percentile
+	median: number; // 50th percentile
+	q3: number; // 75th percentile
+}
+
+/** Calculate quartile statistics for a set of prices */
+export function calculatePriceStats(prices: number[]): DrinkPriceStats | null {
+	if (prices.length === 0) return null;
+
+	const sorted = [...prices].sort((a, b) => a - b);
+	const count = sorted.length;
+
+	const minPrice = sorted[0];
+	const maxPrice = sorted[count - 1];
+
+	if (count === 1) {
+		return { minPrice, maxPrice, q1: minPrice, median: minPrice, q3: maxPrice };
+	}
+
+	const q1Index = Math.floor(count / 4);
+	const medianIndex = Math.floor(count / 2);
+	const q3Index = Math.floor((count * 3) / 4);
+
+	return {
+		minPrice,
+		maxPrice,
+		q1: sorted[q1Index],
+		median: sorted[medianIndex],
+		q3: sorted[q3Index]
+	};
+}
+
+/** Get price category using dynamic stats */
+export function getPriceCategoryWithStats(
+	price: number | null,
+	stats: DrinkPriceStats | null
+): PriceCategory {
+	if (price === null || price === undefined) return 'no-price';
+
+	if (stats) {
+		if (price < stats.q1) return 'cheap';
+		if (price < stats.median) return 'medium';
+		if (price < stats.q3) return 'expensive';
+		return 'very-expensive';
+	}
+
+	// Fallback to hardcoded ranges if no stats available
+	if (price < 2.0) return 'cheap';
+	if (price < 2.5) return 'medium';
+	if (price < 3.0) return 'expensive';
+	return 'very-expensive';
+}
+
 export function getPriceCategory(price: number | null): PriceCategory {
 	if (price === null || price === undefined) return 'no-price';
 	if (price < 2.0) return 'cheap';

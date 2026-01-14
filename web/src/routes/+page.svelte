@@ -3,8 +3,8 @@
 	import { PUBLIC_MAPKIT_TOKEN, PUBLIC_CLOUDKIT_TOKEN } from '$env/static/public';
 	import { initCloudKit, fetchAllCafes, fetchPriceHistory, fetchAllPriceRecords } from '$lib/cloudkit';
 	import { initMapKit, createMap, addCafesToMap } from '$lib/mapkit';
-	import type { Cafe, PriceRecord } from '$lib/types';
-	import { formatPrice, getPriceCategory, findDrinkPrice } from '$lib/types';
+	import type { Cafe, PriceRecord, DrinkPriceStats } from '$lib/types';
+	import { formatPrice, getPriceCategory, getPriceCategoryWithStats, findDrinkPrice, calculatePriceStats } from '$lib/types';
 	import type { Attachment } from 'svelte/attachments';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
 	import MapPin from '@lucide/svelte/icons/map-pin';
@@ -43,10 +43,38 @@
 		return sorted.length > 0 ? sorted : ['Espresso'];
 	});
 
-	// Build a map of cafe ID -> price for selected drink
+	// Calculate price stats per drink type
+	let drinkPriceStats = $derived(() => {
+		const statsMap = new Map<string, DrinkPriceStats>();
+		const pricesByDrink = new Map<string, number[]>();
+
+		for (const record of allPriceRecords) {
+			for (const drink of record.drinks) {
+				const prices = pricesByDrink.get(drink.name) ?? [];
+				prices.push(drink.price);
+				pricesByDrink.set(drink.name, prices);
+			}
+		}
+
+		for (const [drinkName, prices] of pricesByDrink) {
+			const stats = calculatePriceStats(prices);
+			if (stats) {
+				statsMap.set(drinkName, stats);
+			}
+		}
+
+		return statsMap;
+	});
+
+	// Get price stats for currently selected drink
+	let currentDrinkStats = $derived(() => {
+		return drinkPriceStats().get(selectedDrink) ?? null;
+	});
+
+	// Build a map of cafe ID -> price for selected drink (no fallback!)
 	let cafePrices = $derived(() => {
 		const priceMap = new Map<string, number | null>();
-		
+
 		// Group records by cafe, get latest for each
 		const latestByCafe = new Map<string, PriceRecord>();
 		for (const record of allPriceRecords) {
@@ -55,20 +83,28 @@
 				latestByCafe.set(record.cafeRecordName, record);
 			}
 		}
-		
+
 		for (const cafe of cafes) {
 			const latestRecord = latestByCafe.get(cafe.recordName);
 			if (latestRecord) {
 				const drink = latestRecord.drinks.find(
-					d => d.name.toLowerCase() === selectedDrink.toLowerCase() ||
-					     d.name.toLowerCase().includes(selectedDrink.toLowerCase())
+					(d) =>
+						d.name.toLowerCase() === selectedDrink.toLowerCase() ||
+						d.name.toLowerCase().includes(selectedDrink.toLowerCase())
 				);
+				// Only set price if the drink exists - no fallback!
 				priceMap.set(cafe.id, drink?.price ?? null);
 			} else {
 				priceMap.set(cafe.id, null);
 			}
 		}
 		return priceMap;
+	});
+
+	// Filter cafes to only those that have the selected drink
+	let filteredCafes = $derived(() => {
+		const prices = cafePrices();
+		return cafes.filter((cafe) => prices.get(cafe.id) !== null);
 	});
 
 	// Sheet state
@@ -112,20 +148,22 @@
 	$effect(() => {
 		if (map && cafes.length > 0) {
 			const prices = cafePrices();
-			
+			const stats = currentDrinkStats();
+			const cafesToShow = filteredCafes();
+
 			// Clear and re-add annotations
 			map.removeAnnotations(map.annotations);
-			const annotations = cafes.map((cafe) => {
-				const price = prices.get(cafe.id) ?? cafe.currentPrice;
-				return createCafeAnnotation(cafe, handleCafeClick, price);
+			const annotations = cafesToShow.map((cafe) => {
+				const price = prices.get(cafe.id) ?? null;
+				return createCafeAnnotation(cafe, handleCafeClick, price, stats);
 			});
 			map.addAnnotations(annotations);
-			
+
 			// Only zoom on initial load
 			if (!hasInitialZoom && annotations.length > 0) {
 				map.showItems(annotations, {
 					animate: true,
-					padding: new window.mapkit.Padding(50, 50, 50, 50),
+					padding: new window.mapkit.Padding(50, 50, 50, 50)
 				});
 				hasInitialZoom = true;
 			}
@@ -213,7 +251,7 @@
 		{#if selectedCafe}
 			{@const filteredHistory = priceHistory.filter(r => findDrinkPrice(r.drinks, selectedDrink) !== null)}
 			{@const sheetPrice = filteredHistory[0] ? findDrinkPrice(filteredHistory[0].drinks, selectedDrink) : null}
-			{@const sheetPriceCategory = getPriceCategory(sheetPrice)}
+			{@const sheetPriceCategory = getPriceCategoryWithStats(sheetPrice, currentDrinkStats())}
 			<!-- Header with gradient background -->
 			<div class="bg-gradient-to-br from-primary/10 to-primary/5 px-6 pt-12 pb-6">
 				<Badge variant={sheetPriceCategory} class="text-2xl font-bold px-5 py-2.5 mb-2">
