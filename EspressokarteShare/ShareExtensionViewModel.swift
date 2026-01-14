@@ -13,6 +13,12 @@ import MapKit
 import Security
 import UIKit
 
+/// Drink price extracted from menu
+struct DrinkPrice: Codable {
+    let name: String
+    let price: Double
+}
+
 /// Represents the current state of the share extension flow
 enum ShareExtensionState: Equatable {
     case loading
@@ -65,6 +71,7 @@ final class ShareExtensionViewModel: ObservableObject {
     @Published var state: ShareExtensionState = .loading
     @Published var photoData: GoogleMapsPhotoData?
     @Published var menuImage: UIImage?
+    @Published var extractedDrinks: [DrinkPrice] = []
     @Published var extractedPrice: Double?
     @Published var matchingCafes: [ShareCafeData] = []
     @Published var selectedCafe: ShareCafeData?
@@ -150,15 +157,16 @@ final class ShareExtensionViewModel: ObservableObject {
             let image = try await fetchImage(from: data.imageURL)
             menuImage = image
 
-            // Extract price
+            // Extract prices
             state = .extractingPrice
-            let price = try await extractPrice(from: image, token: token)
+            let result = try await extractPrices(from: image, token: token)
 
-            guard let extractedPrice = price else {
+            guard let espressoPrice = result.espressoPrice else {
                 state = .error("Could not find an espresso price in this image.")
                 return
             }
-            self.extractedPrice = extractedPrice
+            self.extractedDrinks = result.drinks
+            self.extractedPrice = espressoPrice
 
             // Find matching Apple Maps location
             let cafes = try await findMatchingCafes(
@@ -192,7 +200,7 @@ final class ShareExtensionViewModel: ObservableObject {
     func save() async {
         guard let cafe = selectedCafe,
             let price = extractedPrice,
-            let token = getStoredToken()
+            !extractedDrinks.isEmpty
         else { return }
 
         state = .saving
@@ -202,7 +210,8 @@ final class ShareExtensionViewModel: ObservableObject {
 
             try await saveCafeWithPrice(
                 cafe: cafe,
-                price: price,
+                espressoPrice: price,
+                drinks: extractedDrinks,
                 menuImageData: imageData
             )
 
@@ -242,7 +251,7 @@ final class ShareExtensionViewModel: ObservableObject {
 
     // MARK: - Private: Price Extraction
 
-    private func extractPrice(from image: UIImage, token: String) async throws -> Double? {
+    private func extractPrices(from image: UIImage, token: String) async throws -> PriceExtractionResult {
         guard let imageData = image.jpegData(compressionQuality: 0.8) else {
             throw NSError(
                 domain: "ShareExtension", code: 3,
@@ -276,7 +285,7 @@ final class ShareExtensionViewModel: ObservableObject {
         switch httpResponse.statusCode {
         case 200:
             let result = try JSONDecoder().decode(PriceResponse.self, from: data)
-            return result.price
+            return PriceExtractionResult(drinks: result.drinks ?? [])
         case 401:
             throw NSError(
                 domain: "ShareExtension", code: 401,
@@ -364,7 +373,8 @@ final class ShareExtensionViewModel: ObservableObject {
 
     private func saveCafeWithPrice(
         cafe: ShareCafeData,
-        price: Double,
+        espressoPrice: Double,
+        drinks: [DrinkPrice],
         menuImageData: Data?
     ) async throws {
         // Use the main app's CloudKit container explicitly
@@ -387,8 +397,8 @@ final class ShareExtensionViewModel: ObservableObject {
             cafeRecord["longitude"] = cafe.longitude
         }
 
-        // Update current price
-        cafeRecord["currentPrice"] = price
+        // Update current price (espresso price for map display)
+        cafeRecord["currentPrice"] = espressoPrice
 
         // Save cafe record
         try await publicDatabase.save(cafeRecord)
@@ -414,7 +424,6 @@ final class ShareExtensionViewModel: ObservableObject {
                 ])
         }
 
-        priceRecord["price"] = price
         priceRecord["date"] = priceDate
         priceRecord["addedBy"] = userRecordID
         priceRecord["addedByName"] = userName
@@ -423,6 +432,12 @@ final class ShareExtensionViewModel: ObservableObject {
             recordID: cafeRecord.recordID,
             action: .deleteSelf
         )
+
+        // Save drinks as JSON string (same format as main app)
+        if let drinksData = try? JSONEncoder().encode(drinks),
+           let drinksJSON = String(data: drinksData, encoding: .utf8) {
+            priceRecord["drinksJSON"] = drinksJSON
+        }
 
         // Save menu image as CKAsset if provided
         if let imageData = menuImageData {
@@ -477,8 +492,27 @@ final class ShareExtensionViewModel: ObservableObject {
 
 // MARK: - Response Types
 
+private struct PriceExtractionResult {
+    let drinks: [DrinkPrice]
+
+    /// Find espresso price from the drinks array
+    var espressoPrice: Double? {
+        // Look for exact "Espresso" first
+        if let espresso = drinks.first(where: { $0.name.lowercased() == "espresso" }) {
+            return espresso.price
+        }
+        // Fallback: find any drink containing "espresso" but not "double" or "doppio"
+        if let espresso = drinks.first(where: {
+            let name = $0.name.lowercased()
+            return name.contains("espresso") && !name.contains("double") && !name.contains("doppio")
+        }) {
+            return espresso.price
+        }
+        return nil
+    }
+}
+
 private struct PriceResponse: Decodable {
     let success: Bool?
-    let price: Double?
-    let confidence: String?
+    let drinks: [DrinkPrice]?
 }
