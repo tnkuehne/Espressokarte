@@ -28,7 +28,11 @@
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
-	"vars": { "APPLE_APP_BUNDLE_ID": "com.timokuehne.Espressokarte" },
+	"vars": {
+		"APPLE_APP_BUNDLE_ID": "com.timokuehne.Espressokarte",
+		"CF_ACCOUNT_ID": "1ad323e7f62fa311ee56576c309ab626",
+		"CF_GATEWAY_ID": "espressokarte",
+	},
 	/**
 	 * Rate Limiting
 	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
