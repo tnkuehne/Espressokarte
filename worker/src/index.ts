@@ -2,7 +2,10 @@ import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod/v4';
 
 export interface Env {
-	GEMINI_API_KEY: string;
+	// AI Gateway configuration (BYOK - no API key needed in code)
+	CF_ACCOUNT_ID: string;
+	CF_GATEWAY_ID: string;
+	CF_AIG_TOKEN?: string; // Optional: for authenticated gateway
 	APPLE_APP_BUNDLE_ID: string;
 	PRICE_EXTRACTION_LIMITER: RateLimit;
 }
@@ -116,9 +119,30 @@ async function verifyAppleToken(token: string, bundleId: string): Promise<AppleT
 	}
 }
 
-// Call Gemini 3 Flash with structured output using Zod schema
-async function extractPriceFromImage(apiKey: string, imageBase64: string, mediaType: string): Promise<PriceResult> {
-	const ai = new GoogleGenAI({ apiKey });
+// Build AI Gateway base URL for Google AI Studio
+function getAIGatewayBaseUrl(accountId: string, gatewayId: string): string {
+	return `https://gateway.ai.cloudflare.com/v1/${accountId}/${gatewayId}/google-ai-studio`;
+}
+
+// Call Gemini 3 Flash with structured output using Zod schema via AI Gateway
+async function extractPriceFromImage(env: Env, imageBase64: string, mediaType: string): Promise<PriceResult> {
+	const baseUrl = getAIGatewayBaseUrl(env.CF_ACCOUNT_ID, env.CF_GATEWAY_ID);
+
+	// Build headers for AI Gateway authentication (if using authenticated gateway)
+	const headers: Record<string, string> = {};
+	if (env.CF_AIG_TOKEN) {
+		headers['cf-aig-authorization'] = `Bearer ${env.CF_AIG_TOKEN}`;
+	}
+
+	// Initialize Google GenAI with AI Gateway base URL
+	// BYOK: API key is stored in AI Gateway, so we pass an empty string
+	const ai = new GoogleGenAI({
+		apiKey: '', // Not needed with BYOK - key is stored in AI Gateway
+		httpOptions: {
+			baseUrl,
+			headers,
+		},
+	});
 
 	const response = await ai.models.generateContent({
 		model: 'gemini-3-flash-preview',
@@ -228,7 +252,7 @@ export default {
 
 			const mediaType = body.mediaType || 'image/jpeg';
 
-			const priceData = await extractPriceFromImage(env.GEMINI_API_KEY, body.image, mediaType);
+			const priceData = await extractPriceFromImage(env, body.image, mediaType);
 
 			return new Response(
 				JSON.stringify({

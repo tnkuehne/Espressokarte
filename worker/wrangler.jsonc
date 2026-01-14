@@ -28,7 +28,15 @@
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
-	"vars": { "APPLE_APP_BUNDLE_ID": "com.timokuehne.Espressokarte" },
+	"vars": {
+		"APPLE_APP_BUNDLE_ID": "com.timokuehne.Espressokarte",
+		// AI Gateway configuration for BYOK (Bring Your Own Key)
+		// Get these from your Cloudflare dashboard: AI > AI Gateway
+		"CF_ACCOUNT_ID": "", // Your Cloudflare Account ID
+		"CF_GATEWAY_ID": ""  // Your AI Gateway ID/name
+		// Note: CF_AIG_TOKEN should be set as a secret if using authenticated gateway:
+		// wrangler secret put CF_AIG_TOKEN
+	},
 	/**
 	 * Rate Limiting
 	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
