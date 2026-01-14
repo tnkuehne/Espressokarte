@@ -266,7 +266,7 @@ final class ShareExtensionViewModel: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.timeoutInterval = 30
+        request.timeoutInterval = 90
 
         let body: [String: Any] = [
             "image": base64Image,
