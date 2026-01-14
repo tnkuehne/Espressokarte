@@ -30,12 +30,8 @@
 	 */
 	"vars": {
 		"APPLE_APP_BUNDLE_ID": "com.timokuehne.Espressokarte",
-		// AI Gateway configuration for BYOK (Bring Your Own Key)
-		// Get these from your Cloudflare dashboard: AI > AI Gateway
-		"CF_ACCOUNT_ID": "", // Your Cloudflare Account ID
-		"CF_GATEWAY_ID": ""  // Your AI Gateway ID/name
-		// Note: CF_AIG_TOKEN should be set as a secret if using authenticated gateway:
-		// wrangler secret put CF_AIG_TOKEN
+		"CF_ACCOUNT_ID": "1ad323e7f62fa311ee56576c309ab626",
+		"CF_GATEWAY_ID": "espressokarte",
 	},
 	/**
 	 * Rate Limiting
