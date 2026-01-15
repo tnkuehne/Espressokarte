@@ -11,6 +11,7 @@ import SwiftUI
 struct EspressokarteApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -24,10 +25,30 @@ struct EspressokarteApp: App {
                 }
             }
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            handleScenePhaseChange(newPhase)
+        }
+    }
+
+    private func handleScenePhaseChange(_ phase: ScenePhase) {
+        Task { @MainActor in
+            switch phase {
+            case .active:
+                // App became active - start processing any pending extractions
+                BackgroundExtractionManager.shared.appDidBecomeActive()
+            case .background:
+                // App went to background - schedule background processing
+                BackgroundExtractionManager.shared.appDidEnterBackground()
+            case .inactive:
+                break
+            @unknown default:
+                break
+            }
+        }
     }
 }
 
-/// App delegate for handling push notifications and CloudKit
+/// App delegate for handling push notifications, CloudKit, and background tasks
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(
         _ application: UIApplication,
@@ -35,6 +56,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     ) -> Bool {
         // Register for push notifications
         application.registerForRemoteNotifications()
+
+        // Register background task for price extraction
+        BackgroundExtractionManager.shared.registerBackgroundTask()
+
         return true
     }
 

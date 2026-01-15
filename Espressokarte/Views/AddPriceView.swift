@@ -21,6 +21,8 @@ struct AddPriceView: View {
     @StateObject private var cloudKitManager = CloudKitManager.shared
     @StateObject private var appleSignInManager = AppleSignInManager.shared
     @StateObject private var priceExtractionService = PriceExtractionService.shared
+    @StateObject private var pendingExtractionManager = PendingExtractionManager.shared
+    @StateObject private var backgroundExtractionManager = BackgroundExtractionManager.shared
 
     @State private var selectedCafe: MapItemData?
     @State private var extractedDrinks: [DrinkPrice] = []
@@ -31,6 +33,7 @@ struct AddPriceView: View {
     @State private var errorMessage = ""
     @State private var showCamera = false
     @State private var showCameraPermissionAlert = false
+    @State private var isQueuingExtraction = false
 
     var body: some View {
         NavigationStack {
@@ -77,16 +80,6 @@ struct AddPriceView: View {
                         dismiss()
                     }
                 }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    if selectedCafe != nil && CloudKitManager.findEspressoPrice(in: extractedDrinks) != nil {
-                        Button("Save") {
-                            savePrice()
-                        }
-                        .disabled(isSaving)
-                        .fontWeight(.semibold)
-                    }
-                }
             }
             .alert("Error", isPresented: $showError) {
                 Button("OK") {}
@@ -105,14 +98,15 @@ struct AddPriceView: View {
             }
             .fullScreenCover(isPresented: $showCamera) {
                 CameraPicker { image in
-                    extractPriceFromImage(image)
+                    capturedImage = image
+                    queueExtractionAndDismiss(image)
                 }
             }
             .overlay {
-                if isSaving {
+                if isSaving || isQueuingExtraction {
                     Color.black.opacity(0.3)
                         .ignoresSafeArea()
-                    ProgressView("Saving...")
+                    ProgressView(isQueuingExtraction ? "Queuing..." : "Saving...")
                         .padding()
                         .background(.ultraThickMaterial)
                         .cornerRadius(12)
@@ -174,28 +168,6 @@ struct AddPriceView: View {
         }
     }
 
-    private func extractPriceFromImage(_ image: UIImage) {
-        Task {
-            do {
-                let result = try await priceExtractionService.extractPrices(from: image)
-                extractedDrinks = result.drinks
-                capturedImage = image
-                
-                if result.espressoPrice == nil {
-                    if result.drinks.isEmpty {
-                        errorMessage = "Could not find any drink prices in the image. Please try again."
-                    } else {
-                        errorMessage = "Found \(result.drinks.count) drinks but no espresso. Please try again."
-                    }
-                    showError = true
-                }
-            } catch {
-                errorMessage = error.localizedDescription
-                showError = true
-            }
-        }
-    }
-
     private func savePrice() {
         guard let cafe = selectedCafe, !extractedDrinks.isEmpty else {
             return
@@ -223,6 +195,37 @@ struct AddPriceView: View {
                     showError = true
                 }
             }
+        }
+    }
+
+    /// Queues the extraction for background processing and dismisses immediately
+    private func queueExtractionAndDismiss(_ image: UIImage) {
+        guard let cafe = selectedCafe else { return }
+
+        isQueuingExtraction = true
+
+        // Queue the extraction for background processing
+        let extraction = pendingExtractionManager.queueExtraction(
+            cafeId: cafe.id,
+            cafeName: cafe.name,
+            cafeAddress: cafe.address,
+            cafeLatitude: cafe.latitude,
+            cafeLongitude: cafe.longitude,
+            image: image,
+            source: .mainApp
+        )
+
+        if extraction != nil {
+            // Start background processing
+            backgroundExtractionManager.startProcessing()
+
+            // Notify and dismiss
+            onPriceSaved?()
+            dismiss()
+        } else {
+            isQueuingExtraction = false
+            errorMessage = "Failed to queue extraction. Please try again."
+            showError = true
         }
     }
 }
@@ -255,73 +258,17 @@ struct SelectedCafeHeader: View {
     }
 }
 
-/// Section for capturing and displaying price via camera
+/// Section for capturing price via camera with async processing
 struct PriceCaptureSection: View {
     @Binding var extractedDrinks: [DrinkPrice]
     let isSignedIn: Bool
     let isProcessing: Bool
     let onSignIn: () -> Void
     let onTakePhoto: () -> Void
-    
-    private var espressoPrice: Double? {
-        CloudKitManager.findEspressoPrice(in: extractedDrinks)
-    }
 
     var body: some View {
         VStack(spacing: 20) {
-            if isProcessing {
-                // Loading state
-                VStack(spacing: 12) {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                    Text("Extracting price...")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-            } else if let price = espressoPrice {
-                // Price found - display it
-                VStack(spacing: 8) {
-                    Text(String(format: "%.2f", price))
-                        .font(.system(size: 64, weight: .bold, design: .rounded))
-
-                    Text("Espresso price detected")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
-                .background(Color(.systemGray6))
-                .cornerRadius(16)
-
-                // Option to retake
-                Button {
-                    onTakePhoto()
-                } label: {
-                    Label("Take New Photo", systemImage: "camera")
-                        .font(.subheadline)
-                }
-            } else if !extractedDrinks.isEmpty {
-                // Drinks found but no espresso
-                VStack(spacing: 8) {
-                    Text("No espresso found")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    Text("Found \(extractedDrinks.count) other drinks")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
-
-                Button {
-                    onTakePhoto()
-                } label: {
-                    Label("Take New Photo", systemImage: "camera")
-                        .font(.subheadline)
-                }
-            } else if !isSignedIn {
+            if !isSignedIn {
                 // Not signed in - show sign in button
                 VStack(spacing: 16) {
                     Text("Sign in to capture prices")
@@ -344,16 +291,22 @@ struct PriceCaptureSection: View {
                 .padding(.vertical, 20)
             } else {
                 // Signed in, ready to capture
-                Button {
-                    onTakePhoto()
-                } label: {
-                    Label("Take Photo of Menu", systemImage: "camera.fill")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.accentColor)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+                VStack(spacing: 16) {
+                    Button {
+                        onTakePhoto()
+                    } label: {
+                        Label("Take Photo of Menu", systemImage: "camera.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.accentColor)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                    }
+
+                    Text("Price will be extracted in the background")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
         }

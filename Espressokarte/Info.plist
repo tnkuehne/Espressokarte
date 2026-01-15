@@ -8,6 +8,11 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.timokuehne.Espressokarte.priceExtraction</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string
