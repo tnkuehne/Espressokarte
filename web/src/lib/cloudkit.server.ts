@@ -1,5 +1,5 @@
-import { env } from "$env/dynamic/public";
 import { dev } from "$app/environment";
+import { env } from "$env/dynamic/private";
 
 const CONTAINER_IDENTIFIER = "iCloud.com.timokuehne.Espressokarte";
 const CLOUDKIT_API_BASE = "https://api.apple-cloudkit.com/database/1";
@@ -28,31 +28,112 @@ interface CloudKitReference {
 	action?: string;
 }
 
+/**
+ * Convert PEM private key to CryptoKey for signing
+ */
+async function importPrivateKey(pemKey: string): Promise<CryptoKey> {
+	// Remove PEM headers and decode base64
+	const pemContents = pemKey
+		.replace(/-----BEGIN EC PRIVATE KEY-----/, "")
+		.replace(/-----END EC PRIVATE KEY-----/, "")
+		.replace(/-----BEGIN PRIVATE KEY-----/, "")
+		.replace(/-----END PRIVATE KEY-----/, "")
+		.replace(/\s/g, "");
+
+	const binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+
+	// Try PKCS8 format first, then EC format
+	try {
+		return await crypto.subtle.importKey(
+			"pkcs8",
+			binaryDer,
+			{ name: "ECDSA", namedCurve: "P-256" },
+			false,
+			["sign"]
+		);
+	} catch {
+		// If PKCS8 fails, the key might be in SEC1/EC format
+		// We need to wrap it in PKCS8 format
+		throw new Error(
+			"Failed to import private key. Ensure it's in PKCS8 format. " +
+				"Convert with: openssl pkcs8 -topk8 -nocrypt -in key.pem -out key-pkcs8.pem"
+		);
+	}
+}
+
+/**
+ * Create CloudKit Server-to-Server request signature
+ */
+async function createSignature(
+	privateKey: CryptoKey,
+	date: string,
+	body: string,
+	subpath: string
+): Promise<string> {
+	// Hash the body with SHA-256
+	const bodyBytes = new TextEncoder().encode(body);
+	const bodyHashBuffer = await crypto.subtle.digest("SHA-256", bodyBytes);
+	const bodyHash = btoa(String.fromCharCode(...new Uint8Array(bodyHashBuffer)));
+
+	// Create the message to sign: date:bodyHash:subpath
+	const message = `${date}:${bodyHash}:${subpath}`;
+	const messageBytes = new TextEncoder().encode(message);
+
+	// Sign with ECDSA SHA-256
+	const signatureBuffer = await crypto.subtle.sign(
+		{ name: "ECDSA", hash: "SHA-256" },
+		privateKey,
+		messageBytes
+	);
+
+	// Convert to base64
+	return btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
+}
+
+/**
+ * Make authenticated CloudKit API request
+ */
 async function cloudKitQuery(
 	recordType: string,
 	sortBy?: { fieldName: string; ascending: boolean }[]
 ): Promise<CloudKitRecord[]> {
-	const apiToken = env.PUBLIC_CLOUDKIT_TOKEN;
-	if (!apiToken) {
-		throw new Error("CloudKit API token not configured");
+	const keyId = env.CLOUDKIT_KEY_ID;
+	const privateKeyPem = env.CLOUDKIT_PRIVATE_KEY;
+
+	if (!keyId || !privateKeyPem) {
+		throw new Error(
+			"CloudKit Server-to-Server credentials not configured. " +
+				"Set CLOUDKIT_KEY_ID and CLOUDKIT_PRIVATE_KEY environment variables."
+		);
 	}
 
+	const privateKey = await importPrivateKey(privateKeyPem);
+
 	const environment = dev ? "development" : "production";
+	const subpath = `/database/1/${CONTAINER_IDENTIFIER}/${environment}/public/records/query`;
 	const url = `${CLOUDKIT_API_BASE}/${CONTAINER_IDENTIFIER}/${environment}/public/records/query`;
 
-	const body = {
+	const body = JSON.stringify({
 		query: {
 			recordType,
 			...(sortBy && { sortBy }),
 		},
-	};
+	});
 
-	const response = await fetch(`${url}?ckAPIToken=${apiToken}`, {
+	// ISO8601 date with milliseconds
+	const date = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+
+	const signature = await createSignature(privateKey, date, body, subpath);
+
+	const response = await fetch(url, {
 		method: "POST",
 		headers: {
-			"Content-Type": "application/json",
+			"Content-Type": "text/plain",
+			"X-Apple-CloudKit-Request-KeyID": keyId,
+			"X-Apple-CloudKit-Request-ISO8601Date": date,
+			"X-Apple-CloudKit-Request-SignatureV1": signature,
 		},
-		body: JSON.stringify(body),
+		body,
 	});
 
 	if (!response.ok) {
