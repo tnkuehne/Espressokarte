@@ -26,7 +26,7 @@
 
 	// Drink filter
 	let selectedDrink = $state('Espresso');
-	let availableDrinks = $derived(() => {
+	let availableDrinks = $derived.by(() => {
 		const drinkSet = new Set<string>();
 		for (const record of allPriceRecords) {
 			for (const drink of record.drinks) {
@@ -44,7 +44,7 @@
 	});
 
 	// Calculate price stats per drink type
-	let drinkPriceStats = $derived(() => {
+	let drinkPriceStats = $derived.by(() => {
 		const statsMap = new Map<string, DrinkPriceStats>();
 		const pricesByDrink = new Map<string, number[]>();
 
@@ -67,12 +67,10 @@
 	});
 
 	// Get price stats for currently selected drink
-	let currentDrinkStats = $derived(() => {
-		return drinkPriceStats().get(selectedDrink) ?? null;
-	});
+	let currentDrinkStats = $derived(drinkPriceStats.get(selectedDrink) ?? null);
 
 	// Build a map of cafe ID -> price for selected drink (no fallback!)
-	let cafePrices = $derived(() => {
+	let cafePrices = $derived.by(() => {
 		const priceMap = new Map<string, number | null>();
 
 		// Group records by cafe, get latest for each
@@ -102,10 +100,7 @@
 	});
 
 	// Filter cafes to only those that have the selected drink
-	let filteredCafes = $derived(() => {
-		const prices = cafePrices();
-		return cafes.filter((cafe) => prices.get(cafe.id) !== null);
-	});
+	let filteredCafes = $derived(cafes.filter((cafe) => cafePrices.get(cafe.id) !== null));
 
 	// Sheet state
 	let sheetOpen = $state(false);
@@ -147,15 +142,11 @@
 	// Reactively add cafes to map when both are ready
 	$effect(() => {
 		if (map && cafes.length > 0) {
-			const prices = cafePrices();
-			const stats = currentDrinkStats();
-			const cafesToShow = filteredCafes();
-
 			// Clear and re-add annotations
 			map.removeAnnotations(map.annotations);
-			const annotations = cafesToShow.map((cafe) => {
-				const price = prices.get(cafe.id) ?? null;
-				return createCafeAnnotation(cafe, handleCafeClick, price, stats);
+			const annotations = filteredCafes.map((cafe) => {
+				const price = cafePrices.get(cafe.id) ?? null;
+				return createCafeAnnotation(cafe, handleCafeClick, price, currentDrinkStats);
 			});
 			map.addAnnotations(annotations);
 
@@ -227,7 +218,7 @@
 						<span class="truncate">{selectedDrink}</span>
 					</Select.Trigger>
 					<Select.Content>
-						{#each availableDrinks() as drink}
+						{#each availableDrinks as drink}
 							<Select.Item value={drink}>{drink}</Select.Item>
 						{/each}
 					</Select.Content>
@@ -251,7 +242,7 @@
 		{#if selectedCafe}
 			{@const filteredHistory = priceHistory.filter(r => findDrinkPrice(r.drinks, selectedDrink) !== null)}
 			{@const sheetPrice = filteredHistory[0] ? findDrinkPrice(filteredHistory[0].drinks, selectedDrink) : null}
-			{@const sheetPriceCategory = getPriceCategoryWithStats(sheetPrice, currentDrinkStats())}
+			{@const sheetPriceCategory = getPriceCategoryWithStats(sheetPrice, currentDrinkStats)}
 			<!-- Header with gradient background -->
 			<div class="bg-gradient-to-br from-primary/10 to-primary/5 px-6 pt-12 pb-6">
 				<Badge variant={sheetPriceCategory} class="text-2xl font-bold px-5 py-2.5 mb-2">

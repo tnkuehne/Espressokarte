@@ -40,9 +40,6 @@ final class DrinkFilterManager: ObservableObject {
     /// Price statistics per drink type
     @Published private(set) var drinkPriceStats: [String: DrinkPriceStats] = [:]
 
-    /// Set of cafe IDs that have the selected drink
-    @Published private(set) var cafesWithSelectedDrink: Set<String> = []
-
     private init() {}
 
     /// Updates available drinks and price stats from the current cafe data
@@ -77,24 +74,10 @@ final class DrinkFilterManager: ObservableObject {
         }
         drinkPriceStats = stats
 
-        // Update cafes with selected drink
-        updateCafesWithSelectedDrink(from: cafes)
-
         // Reset to Espresso if selected drink is no longer available
         if !availableDrinks.contains(selectedDrink) {
             selectedDrink = "Espresso"
         }
-    }
-
-    /// Updates the set of cafes that have the selected drink
-    func updateCafesWithSelectedDrink(from cafes: [Cafe]) {
-        var cafeIds = Set<String>()
-        for cafe in cafes {
-            if cafe.price(for: selectedDrink) != nil {
-                cafeIds.insert(cafe.id.uuidString)
-            }
-        }
-        cafesWithSelectedDrink = cafeIds
     }
 
     /// Calculate quartile statistics for a set of prices
@@ -107,10 +90,9 @@ final class DrinkFilterManager: ObservableObject {
         let minPrice = sorted.first!
         let maxPrice = sorted.last!
 
-        // If only one price, use it for all quartiles
-        guard count > 1 else {
-            return DrinkPriceStats(minPrice: minPrice, maxPrice: maxPrice, q1: minPrice, median: minPrice, q3: maxPrice)
-        }
+        // Need at least 4 distinct values for meaningful quartiles
+        // If all values are identical or too few, return nil to use fallback ranges
+        guard count >= 4 && minPrice < maxPrice else { return nil }
 
         let q1Index = count / 4
         let medianIndex = count / 2
@@ -119,6 +101,9 @@ final class DrinkFilterManager: ObservableObject {
         let q1 = sorted[q1Index]
         let median = sorted[medianIndex]
         let q3 = sorted[q3Index]
+
+        // If quartiles are all equal, return nil to use fallback ranges
+        guard q1 < q3 else { return nil }
 
         return DrinkPriceStats(minPrice: minPrice, maxPrice: maxPrice, q1: q1, median: median, q3: q3)
     }

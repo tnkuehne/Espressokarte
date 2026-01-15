@@ -66,20 +66,26 @@ export function calculatePriceStats(prices: number[]): DrinkPriceStats | null {
 	const minPrice = sorted[0];
 	const maxPrice = sorted[count - 1];
 
-	if (count === 1) {
-		return { minPrice, maxPrice, q1: minPrice, median: minPrice, q3: maxPrice };
-	}
+	// Need at least 4 values and some variance for meaningful quartiles
+	// If all values are identical or too few, return null to use fallback ranges
+	if (count < 4 || minPrice >= maxPrice) return null;
 
 	const q1Index = Math.floor(count / 4);
 	const medianIndex = Math.floor(count / 2);
 	const q3Index = Math.floor((count * 3) / 4);
 
+	const q1 = sorted[q1Index];
+	const q3 = sorted[q3Index];
+
+	// If quartiles are all equal, return null to use fallback ranges
+	if (q1 >= q3) return null;
+
 	return {
 		minPrice,
 		maxPrice,
-		q1: sorted[q1Index],
+		q1,
 		median: sorted[medianIndex],
-		q3: sorted[q3Index]
+		q3
 	};
 }
 

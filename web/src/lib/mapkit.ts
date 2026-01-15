@@ -136,13 +136,14 @@ export function addCafesToMap(
   cafes: Cafe[],
   onClick: (cafe: Cafe) => void,
   cafePrices?: Map<string, number | null>,
+  priceStats?: DrinkPriceStats | null,
 ): mapkit.Annotation[] {
   // Clear existing annotations
   map.removeAnnotations(map.annotations);
 
   const annotations = cafes.map((cafe) => {
     const price = cafePrices?.get(cafe.id) ?? cafe.currentPrice;
-    return createCafeAnnotation(cafe, onClick, price);
+    return createCafeAnnotation(cafe, onClick, price, priceStats ?? null);
   });
   map.addAnnotations(annotations);
 
