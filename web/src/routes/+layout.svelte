@@ -3,6 +3,7 @@
     import { ModeWatcher } from "mode-watcher";
 
     import Coffee from "@lucide/svelte/icons/coffee";
+    import ChartBar from "@lucide/svelte/icons/chart-bar";
 
     let { children } = $props();
 </script>
@@ -15,14 +16,25 @@
 
 <div class="min-h-screen flex flex-col">
     <header class="border-b border-border bg-card px-4 py-3 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto flex items-center gap-2">
-            <Coffee class="h-6 w-6 text-espresso-expensive" />
-            <a
-                href="/"
-                class="text-xl font-bold text-foreground hover:text-primary transition-colors"
-            >
-                Espressokarte
-            </a>
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <Coffee class="h-6 w-6 text-espresso-expensive" />
+                <a
+                    href="/"
+                    class="text-xl font-bold text-foreground hover:text-primary transition-colors"
+                >
+                    Espressokarte
+                </a>
+            </div>
+            <nav>
+                <a
+                    href="/analytics"
+                    class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                    <ChartBar class="h-4 w-4" />
+                    <span>Analytics</span>
+                </a>
+            </nav>
         </div>
     </header>
 
