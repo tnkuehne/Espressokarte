@@ -52,7 +52,11 @@ struct ShareExtensionView: View {
             FetchingImageView(placeName: viewModel.photoData?.placeName)
 
         case .extractingPrice:
-            ExtractingPriceView(image: viewModel.menuImage)
+            ExtractingPriceView(
+                image: viewModel.menuImage,
+                canQueue: viewModel.canQueue,
+                onQueueForLater: { viewModel.queueForLater() }
+            )
 
         case .selectingCafe:
             CafeSelectionView(
@@ -76,6 +80,9 @@ struct ShareExtensionView: View {
 
         case .success:
             SuccessView(onComplete: onComplete)
+
+        case .queued:
+            QueuedView(onComplete: onComplete)
 
         case .error(let message):
             ErrorView(
@@ -163,6 +170,8 @@ struct FetchingImageView: View {
 
 struct ExtractingPriceView: View {
     let image: UIImage?
+    let canQueue: Bool
+    let onQueueForLater: () -> Void
 
     var body: some View {
         VStack(spacing: 20) {
@@ -179,6 +188,23 @@ struct ExtractingPriceView: View {
                 ProgressView()
                 Text("Extracting espresso price...")
                     .foregroundColor(.secondary)
+                Text("This may take up to a minute")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            if canQueue {
+                VStack(spacing: 8) {
+                    Text("Don't want to wait?")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Button("Process in Background") {
+                        onQueueForLater()
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding(.top, 16)
             }
         }
         .padding()
@@ -357,6 +383,36 @@ struct ErrorView: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
+            .padding(.top)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct QueuedView: View {
+    let onComplete: () -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "clock.badge.checkmark.fill")
+                .font(.system(size: 80))
+                .foregroundColor(.blue)
+
+            Text("Queued for Processing")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text("The price will be extracted when you open Espressokarte. You'll see it in \"Pending Extractions\".")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+
+            Button("Done") {
+                onComplete()
+            }
+            .buttonStyle(.borderedProminent)
             .padding(.top)
         }
         .padding()

@@ -30,6 +30,7 @@ enum ShareExtensionState: Equatable {
     case ready
     case saving
     case success
+    case queued  // New state: extraction queued for background processing
     case error(String)
 
     static func == (lhs: ShareExtensionState, rhs: ShareExtensionState) -> Bool {
@@ -42,7 +43,8 @@ enum ShareExtensionState: Equatable {
             (.selectingCafe, .selectingCafe),
             (.ready, .ready),
             (.saving, .saving),
-            (.success, .success):
+            (.success, .success),
+            (.queued, .queued):
             return true
         case (.error(let lhsMsg), .error(let rhsMsg)):
             return lhsMsg == rhsMsg
@@ -99,6 +101,11 @@ final class ShareExtensionViewModel: ObservableObject {
 
     var canSave: Bool {
         selectedCafe != nil && extractedPrice != nil && state != .saving
+    }
+
+    /// Whether user can queue extraction for background processing
+    var canQueue: Bool {
+        selectedCafe != nil && menuImage != nil && state != .saving
     }
 
     /// Set the window for presenting sign-in UI
@@ -224,6 +231,28 @@ final class ShareExtensionViewModel: ObservableObject {
     func retry() async {
         guard let url = inputURL else { return }
         await processURL(url)
+    }
+
+    /// Queue extraction for background processing by the main app
+    /// This allows the user to close the share extension immediately
+    func queueForLater() {
+        guard let cafe = selectedCafe,
+              let image = menuImage else { return }
+
+        let success = SharedPendingExtractionManager.shared.queueExtraction(
+            cafeId: cafe.id,
+            cafeName: cafe.name,
+            cafeAddress: cafe.address,
+            cafeLatitude: cafe.latitude,
+            cafeLongitude: cafe.longitude,
+            image: image
+        )
+
+        if success {
+            state = .queued
+        } else {
+            state = .error("Failed to queue extraction. Please try again.")
+        }
     }
 
     // MARK: - Private: Image Fetching
