@@ -486,7 +486,17 @@ final class ShareExtensionViewModel: ObservableObject {
 
     private func getUserName() -> String? {
         let sharedDefaults = UserDefaults(suiteName: appGroup)
-        return sharedDefaults?.string(forKey: userNameKey)
+        // Try UserDefaults first, then Keychain as fallback (survives app reinstall)
+        if let name = sharedDefaults?.string(forKey: userNameKey) {
+            return name
+        }
+        // Fallback to Keychain if UserDefaults was cleared (app reinstall)
+        if let keychainName = signInManager.getUserNameFromKeychain() {
+            // Sync it back to UserDefaults
+            sharedDefaults?.set(keychainName, forKey: userNameKey)
+            return keychainName
+        }
+        return nil
     }
 }
 
