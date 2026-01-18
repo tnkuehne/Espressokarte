@@ -15,6 +15,7 @@ final class ShareExtensionSignInManager: NSObject {
     private let tokenKey = "com.espressokarte.appleIdentityToken"
     private let userIdKey = "com.espressokarte.appleUserIdentifier"
     private let userNameKey = "com.espressokarte.appleUserName"
+    private let userNameKeychainKey = "com.espressokarte.appleUserNameKeychain"
     private let appGroup = "group.com.timokuehne.Espressokarte"
 
     private var keychainAccessGroup: String {
@@ -102,6 +103,53 @@ final class ShareExtensionSignInManager: NSObject {
         ]
         SecItemAdd(addQuery as CFDictionary, nil)
     }
+
+    /// Stores user name in Keychain for persistence across app reinstalls
+    private func storeUserNameInKeychain(_ name: String) {
+        let data = Data(name.utf8)
+
+        // Delete existing item first
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: userNameKeychainKey,
+            kSecAttrAccessGroup as String: keychainAccessGroup,
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
+
+        // Add new item
+        let addQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: userNameKeychainKey,
+            kSecAttrAccessGroup as String: keychainAccessGroup,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        SecItemAdd(addQuery as CFDictionary, nil)
+    }
+
+    /// Retrieves user name from Keychain
+    func getUserNameFromKeychain() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: userNameKeychainKey,
+            kSecAttrAccessGroup as String: keychainAccessGroup,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        guard status == errSecSuccess,
+            let data = result as? Data,
+            let name = String(data: data, encoding: .utf8),
+            !name.isEmpty
+        else {
+            return nil
+        }
+
+        return name
+    }
 }
 
 // MARK: - ASAuthorizationControllerDelegate
@@ -134,7 +182,9 @@ extension ShareExtensionSignInManager: ASAuthorizationControllerDelegate {
                 .filter { !$0.isEmpty }
                 .joined(separator: " ")
             if !displayName.isEmpty {
+                // Store in both UserDefaults (for extension) and Keychain (for persistence)
                 sharedDefaults?.set(displayName, forKey: userNameKey)
+                storeUserNameInKeychain(displayName)
             }
         }
 
