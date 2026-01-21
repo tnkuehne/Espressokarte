@@ -15,7 +15,6 @@ final class ShareExtensionSignInManager: NSObject {
     private let tokenKey = "com.espressokarte.appleIdentityToken"
     private let userIdKey = "com.espressokarte.appleUserIdentifier"
     private let userNameKey = "com.espressokarte.appleUserName"
-    private let appGroup = "group.com.timokuehne.Espressokarte"
 
     private var keychainAccessGroup: String {
         guard let group = Bundle.main.object(forInfoDictionaryKey: "KeychainAccessGroup") as? String
@@ -28,7 +27,6 @@ final class ShareExtensionSignInManager: NSObject {
     private weak var presentationAnchor: UIWindow?
     private var signInContinuation: CheckedContinuation<String, Error>?
 
-    /// Perform Sign in with Apple using the provided window as presentation anchor
     func signIn(presentingFrom window: UIWindow?) async throws -> String {
         guard let window = window else {
             throw ShareExtensionSignInError.noWindow
@@ -48,17 +46,52 @@ final class ShareExtensionSignInManager: NSObject {
         }
     }
 
-    /// Check if user is signed in
     func isSignedIn() -> Bool {
-        return getStoredToken() != nil && getUserRecordID() != nil
+        return getKeychainValue(forKey: tokenKey) != nil && getKeychainValue(forKey: userIdKey) != nil
     }
 
-    /// Get stored token
     func getStoredToken() -> String? {
+        return getKeychainValue(forKey: tokenKey)
+    }
+
+    func getUserName() -> String? {
+        return getKeychainValue(forKey: userNameKey)
+    }
+
+    func getUserId() -> String? {
+        return getKeychainValue(forKey: userIdKey)
+    }
+
+    // MARK: - Keychain Helpers
+
+    private func setKeychainValue(_ value: String, forKey key: String) {
+        let data = Data(value.utf8)
+
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecAttrAccessGroup as String: keychainAccessGroup,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
+
+        let addQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecAttrAccessGroup as String: keychainAccessGroup,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+            kSecAttrSynchronizable as String: true,
+        ]
+        SecItemAdd(addQuery as CFDictionary, nil)
+    }
+
+    private func getKeychainValue(forKey key: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: tokenKey,
+            kSecAttrAccount as String: key,
             kSecAttrAccessGroup as String: keychainAccessGroup,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
@@ -68,39 +101,13 @@ final class ShareExtensionSignInManager: NSObject {
 
         guard status == errSecSuccess,
             let data = result as? Data,
-            let token = String(data: data, encoding: .utf8)
+            let value = String(data: data, encoding: .utf8),
+            !value.isEmpty
         else {
             return nil
         }
 
-        return token
-    }
-
-    private func getUserRecordID() -> String? {
-        let sharedDefaults = UserDefaults(suiteName: appGroup)
-        return sharedDefaults?.string(forKey: userIdKey)
-    }
-
-    private func storeToken(_ token: String) {
-        let data = Data(token.utf8)
-
-        // Delete existing item first
-        let deleteQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: tokenKey,
-            kSecAttrAccessGroup as String: keychainAccessGroup,
-        ]
-        SecItemDelete(deleteQuery as CFDictionary)
-
-        // Add new item
-        let addQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: tokenKey,
-            kSecAttrAccessGroup as String: keychainAccessGroup,
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
-        ]
-        SecItemAdd(addQuery as CFDictionary, nil)
+        return value
     }
 }
 
@@ -120,13 +127,11 @@ extension ShareExtensionSignInManager: ASAuthorizationControllerDelegate {
             return
         }
 
-        // Store credentials
-        storeToken(identityToken)
+        // Store credentials in Keychain
+        setKeychainValue(identityToken, forKey: tokenKey)
+        setKeychainValue(credential.user, forKey: userIdKey)
 
-        let sharedDefaults = UserDefaults(suiteName: appGroup)
-        sharedDefaults?.set(credential.user, forKey: userIdKey)
-
-        // Store full name if provided (only available on first sign-in)
+        // Store name if provided (only on first sign-in)
         if let fullName = credential.fullName {
             let givenName = fullName.givenName ?? ""
             let familyName = fullName.familyName ?? ""
@@ -134,7 +139,7 @@ extension ShareExtensionSignInManager: ASAuthorizationControllerDelegate {
                 .filter { !$0.isEmpty }
                 .joined(separator: " ")
             if !displayName.isEmpty {
-                sharedDefaults?.set(displayName, forKey: userNameKey)
+                setKeychainValue(displayName, forKey: userNameKey)
             }
         }
 
@@ -155,7 +160,6 @@ extension ShareExtensionSignInManager: ASAuthorizationControllerDelegate {
 
 extension ShareExtensionSignInManager: ASAuthorizationControllerPresentationContextProviding {
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        // Safe to force unwrap - we validate window exists in signIn() before reaching here
         return presentationAnchor!
     }
 }
