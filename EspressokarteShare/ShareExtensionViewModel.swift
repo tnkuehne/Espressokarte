@@ -79,22 +79,10 @@ final class ShareExtensionViewModel: ObservableObject {
 
     private let urlParser = GoogleMapsURLParser()
     private let workerURL = URL(string: "https://espressokarte.timokuehne.com")!
-    // App group for UserDefaults sharing
-    private let appGroup = "group.com.timokuehne.Espressokarte"
-    // Keychain access group for token sharing (read from Info.plist, includes team ID prefix)
-    private var keychainAccessGroup: String {
-        guard let group = Bundle.main.object(forInfoDictionaryKey: "KeychainAccessGroup") as? String
-        else {
-            fatalError("KeychainAccessGroup not found in Info.plist")
-        }
-        return group
-    }
-    private let tokenKey = "com.espressokarte.appleIdentityToken"
-    private let userIdKey = "com.espressokarte.appleUserIdentifier"
+    private let signInManager = ShareExtensionSignInManager()
 
     private var inputURL: URL?
     private weak var presentingWindow: UIWindow?
-    private let signInManager = ShareExtensionSignInManager()
 
     var canSave: Bool {
         selectedCafe != nil && extractedPrice != nil && state != .saving
@@ -454,37 +442,18 @@ final class ShareExtensionViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Private: Keychain Access
+    // MARK: - Private: Auth Helpers
 
     private func getStoredToken() -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: tokenKey,
-            kSecAttrAccessGroup as String: keychainAccessGroup,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        guard status == errSecSuccess,
-            let data = result as? Data,
-            let token = String(data: data, encoding: .utf8)
-        else {
-            return nil
-        }
-
-        return token
+        return signInManager.getStoredToken()
     }
 
     private func getUserRecordID() -> String? {
-        let sharedDefaults = UserDefaults(suiteName: appGroup)
-        return sharedDefaults?.string(forKey: userIdKey)
+        return signInManager.getUserId()
     }
 
     private func getUserName() -> String? {
-        return signInManager.getUserNameFromKeychain()
+        return signInManager.getUserName()
     }
 }
 

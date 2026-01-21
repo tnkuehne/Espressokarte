@@ -17,14 +17,13 @@ final class AppleSignInManager: NSObject, ObservableObject {
 
     @Published private(set) var isSignedIn: Bool = false
     @Published private(set) var userIdentifier: String?
+    @Published private(set) var userName: String?
     @Published private(set) var error: Error?
 
     private let tokenKey = "com.espressokarte.appleIdentityToken"
     private let userIdKey = "com.espressokarte.appleUserIdentifier"
-    private let userNameKeychainKey = "com.espressokarte.appleUserName"
-    // App group for UserDefaults sharing (used for userId only)
-    private let appGroup = "group.com.timokuehne.Espressokarte"
-    // Keychain access group for token sharing (read from Info.plist, includes team ID prefix)
+    private let userNameKey = "com.espressokarte.appleUserName"
+
     private var keychainAccessGroup: String {
         guard let group = Bundle.main.object(forInfoDictionaryKey: "KeychainAccessGroup") as? String
         else {
@@ -33,13 +32,10 @@ final class AppleSignInManager: NSObject, ObservableObject {
         return group
     }
 
-    @Published private(set) var userName: String?
-
     private var signInContinuation: CheckedContinuation<String, Error>?
 
     override private init() {
         super.init()
-        // Check for existing credentials on init
         Task {
             await checkExistingCredentials()
         }
@@ -47,19 +43,15 @@ final class AppleSignInManager: NSObject, ObservableObject {
 
     // MARK: - Public API
 
-    /// Returns a valid identity token, or throws if not signed in
     func getValidToken() async throws -> String {
-        if let token = getStoredToken() {
+        if let token = getKeychainValue(forKey: tokenKey) {
             return token
         }
         throw AppleSignInError.notSignedIn
     }
 
-    /// Check if user has valid stored credentials
     func checkExistingCredentials() async {
-        let sharedDefaults = UserDefaults(suiteName: appGroup)
-
-        guard let userId = sharedDefaults?.string(forKey: userIdKey) else {
+        guard let userId = getKeychainValue(forKey: userIdKey) else {
             isSignedIn = false
             return
         }
@@ -70,9 +62,9 @@ final class AppleSignInManager: NSObject, ObservableObject {
 
             switch credentialState {
             case .authorized:
-                if getStoredToken() != nil {
+                if getKeychainValue(forKey: tokenKey) != nil {
                     userIdentifier = userId
-                    userName = getUserNameFromKeychain()
+                    userName = getKeychainValue(forKey: userNameKey)
                     isSignedIn = true
                 } else {
                     isSignedIn = false
@@ -91,7 +83,6 @@ final class AppleSignInManager: NSObject, ObservableObject {
         }
     }
 
-    /// Perform Sign in with Apple
     func signIn() async throws -> String {
         let request = ASAuthorizationAppleIDProvider().createRequest()
         request.requestedScopes = [.fullName, .email]
@@ -105,7 +96,6 @@ final class AppleSignInManager: NSObject, ObservableObject {
         }
     }
 
-    /// Sign out and clear stored credentials
     func signOut() {
         clearCredentials()
         isSignedIn = false
@@ -113,69 +103,21 @@ final class AppleSignInManager: NSObject, ObservableObject {
         userName = nil
     }
 
-    // MARK: - Private Helpers
+    // MARK: - Keychain Helpers
 
-    private func getStoredToken() -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: tokenKey,
-            kSecAttrAccessGroup as String: keychainAccessGroup,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
+    private func setKeychainValue(_ value: String, forKey key: String) {
+        let data = Data(value.utf8)
 
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        guard status == errSecSuccess,
-            let data = result as? Data,
-            let token = String(data: data, encoding: .utf8)
-        else {
-            return nil
-        }
-
-        return token
-    }
-
-    private func storeToken(_ token: String) {
-        let data = Data(token.utf8)
-
-        // Delete existing item first
         let deleteQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: tokenKey,
+            kSecAttrAccount as String: key,
             kSecAttrAccessGroup as String: keychainAccessGroup,
         ]
         SecItemDelete(deleteQuery as CFDictionary)
 
-        // Add new item
         let addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: tokenKey,
-            kSecAttrAccessGroup as String: keychainAccessGroup,
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
-        ]
-        SecItemAdd(addQuery as CFDictionary, nil)
-    }
-
-    /// Stores user name in Keychain for persistence across app reinstalls
-    /// Uses kSecAttrAccessibleAfterFirstUnlock (without ThisDeviceOnly) to enable iCloud Keychain sync
-    private func storeUserNameInKeychain(_ name: String) {
-        let data = Data(name.utf8)
-
-        // Delete existing item first
-        let deleteQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: userNameKeychainKey,
-            kSecAttrAccessGroup as String: keychainAccessGroup,
-        ]
-        SecItemDelete(deleteQuery as CFDictionary)
-
-        // Add new item - uses kSecAttrAccessibleAfterFirstUnlock to sync via iCloud Keychain
-        let addQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: userNameKeychainKey,
+            kSecAttrAccount as String: key,
             kSecAttrAccessGroup as String: keychainAccessGroup,
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
@@ -183,11 +125,10 @@ final class AppleSignInManager: NSObject, ObservableObject {
         SecItemAdd(addQuery as CFDictionary, nil)
     }
 
-    /// Retrieves user name from Keychain
-    private func getUserNameFromKeychain() -> String? {
+    private func getKeychainValue(forKey key: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: userNameKeychainKey,
+            kSecAttrAccount as String: key,
             kSecAttrAccessGroup as String: keychainAccessGroup,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
@@ -198,35 +139,28 @@ final class AppleSignInManager: NSObject, ObservableObject {
 
         guard status == errSecSuccess,
             let data = result as? Data,
-            let name = String(data: data, encoding: .utf8),
-            !name.isEmpty
+            let value = String(data: data, encoding: .utf8),
+            !value.isEmpty
         else {
             return nil
         }
 
-        return name
+        return value
+    }
+
+    private func deleteKeychainValue(forKey key: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecAttrAccessGroup as String: keychainAccessGroup,
+        ]
+        SecItemDelete(query as CFDictionary)
     }
 
     private func clearCredentials() {
-        // Clear token from Keychain
-        let tokenQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: tokenKey,
-            kSecAttrAccessGroup as String: keychainAccessGroup,
-        ]
-        SecItemDelete(tokenQuery as CFDictionary)
-
-        // Clear user name from Keychain
-        let userNameQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: userNameKeychainKey,
-            kSecAttrAccessGroup as String: keychainAccessGroup,
-        ]
-        SecItemDelete(userNameQuery as CFDictionary)
-
-        // Clear userId from UserDefaults
-        let sharedDefaults = UserDefaults(suiteName: appGroup)
-        sharedDefaults?.removeObject(forKey: userIdKey)
+        deleteKeychainValue(forKey: tokenKey)
+        deleteKeychainValue(forKey: userIdKey)
+        deleteKeychainValue(forKey: userNameKey)
     }
 }
 
@@ -247,12 +181,11 @@ extension AppleSignInManager: ASAuthorizationControllerDelegate {
                 return
             }
 
-            // Store credentials
-            storeToken(identityToken)
-            let sharedDefaults = UserDefaults(suiteName: appGroup)
-            sharedDefaults?.set(credential.user, forKey: userIdKey)
+            // Store credentials in Keychain
+            setKeychainValue(identityToken, forKey: tokenKey)
+            setKeychainValue(credential.user, forKey: userIdKey)
 
-            // Store full name if provided (only available on first sign-in)
+            // Store name if provided (only on first sign-in)
             if let fullName = credential.fullName {
                 let givenName = fullName.givenName ?? ""
                 let familyName = fullName.familyName ?? ""
@@ -260,14 +193,14 @@ extension AppleSignInManager: ASAuthorizationControllerDelegate {
                     .filter { !$0.isEmpty }
                     .joined(separator: " ")
                 if !displayName.isEmpty {
-                    storeUserNameInKeychain(displayName)
+                    setKeychainValue(displayName, forKey: userNameKey)
                     userName = displayName
                 }
             }
 
             // Load stored name if not set from this sign-in
             if userName == nil {
-                userName = getUserNameFromKeychain()
+                userName = getKeychainValue(forKey: userNameKey)
             }
 
             userIdentifier = credential.user
