@@ -14,8 +14,7 @@ import UIKit
 final class ShareExtensionSignInManager: NSObject {
     private let tokenKey = "com.espressokarte.appleIdentityToken"
     private let userIdKey = "com.espressokarte.appleUserIdentifier"
-    private let userNameKey = "com.espressokarte.appleUserName"
-    private let userNameKeychainKey = "com.espressokarte.appleUserNameKeychain"
+    private let userNameKeychainKey = "com.espressokarte.appleUserName"
     private let appGroup = "group.com.timokuehne.Espressokarte"
 
     private var keychainAccessGroup: String {
@@ -183,8 +182,6 @@ extension ShareExtensionSignInManager: ASAuthorizationControllerDelegate {
                 .filter { !$0.isEmpty }
                 .joined(separator: " ")
             if !displayName.isEmpty {
-                // Store in both UserDefaults (for extension) and Keychain (for persistence)
-                sharedDefaults?.set(displayName, forKey: userNameKey)
                 storeUserNameInKeychain(displayName)
             }
         }

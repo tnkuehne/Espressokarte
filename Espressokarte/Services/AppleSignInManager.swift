@@ -21,9 +21,8 @@ final class AppleSignInManager: NSObject, ObservableObject {
 
     private let tokenKey = "com.espressokarte.appleIdentityToken"
     private let userIdKey = "com.espressokarte.appleUserIdentifier"
-    private let userNameKey = "com.espressokarte.appleUserName"
-    private let userNameKeychainKey = "com.espressokarte.appleUserNameKeychain"
-    // App group for UserDefaults sharing
+    private let userNameKeychainKey = "com.espressokarte.appleUserName"
+    // App group for UserDefaults sharing (used for userId only)
     private let appGroup = "group.com.timokuehne.Espressokarte"
     // Keychain access group for token sharing (read from Info.plist, includes team ID prefix)
     private var keychainAccessGroup: String {
@@ -73,12 +72,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
             case .authorized:
                 if getStoredToken() != nil {
                     userIdentifier = userId
-                    // Try UserDefaults first, then Keychain as fallback
-                    userName = sharedDefaults?.string(forKey: userNameKey) ?? getUserNameFromKeychain()
-                    // If we found name in Keychain but not UserDefaults, sync it back
-                    if userName != nil && sharedDefaults?.string(forKey: userNameKey) == nil {
-                        sharedDefaults?.set(userName, forKey: userNameKey)
-                    }
+                    userName = getUserNameFromKeychain()
                     isSignedIn = true
                 } else {
                     isSignedIn = false
@@ -230,10 +224,9 @@ final class AppleSignInManager: NSObject, ObservableObject {
         ]
         SecItemDelete(userNameQuery as CFDictionary)
 
-        // Clear UserDefaults (use shared container for extension access)
+        // Clear userId from UserDefaults
         let sharedDefaults = UserDefaults(suiteName: appGroup)
         sharedDefaults?.removeObject(forKey: userIdKey)
-        sharedDefaults?.removeObject(forKey: userNameKey)
     }
 }
 
@@ -267,21 +260,14 @@ extension AppleSignInManager: ASAuthorizationControllerDelegate {
                     .filter { !$0.isEmpty }
                     .joined(separator: " ")
                 if !displayName.isEmpty {
-                    // Store in both UserDefaults (for extension) and Keychain (for persistence)
-                    sharedDefaults?.set(displayName, forKey: userNameKey)
                     storeUserNameInKeychain(displayName)
                     userName = displayName
                 }
             }
 
             // Load stored name if not set from this sign-in
-            // Try UserDefaults first, then Keychain as fallback (survives app reinstall)
             if userName == nil {
-                userName = sharedDefaults?.string(forKey: userNameKey) ?? getUserNameFromKeychain()
-                // If we found name in Keychain but not UserDefaults, sync it back
-                if userName != nil && sharedDefaults?.string(forKey: userNameKey) == nil {
-                    sharedDefaults?.set(userName, forKey: userNameKey)
-                }
+                userName = getUserNameFromKeychain()
             }
 
             userIdentifier = credential.user
