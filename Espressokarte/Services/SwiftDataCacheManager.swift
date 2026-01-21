@@ -34,10 +34,13 @@ final class SwiftDataCacheManager {
             CacheMetadata.self
         ])
 
+        // Use .none for cloudKitDatabase to disable CloudKit sync
+        // This is a local-only cache - actual CloudKit sync is handled by CloudKitManager
         let modelConfiguration = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false,
-            allowsSave: true
+            allowsSave: true,
+            cloudKitDatabase: .none
         )
 
         do {
@@ -64,7 +67,8 @@ final class SwiftDataCacheManager {
                 print("SwiftData still failed, using in-memory storage: \(error)")
                 let inMemoryConfig = ModelConfiguration(
                     schema: schema,
-                    isStoredInMemoryOnly: true
+                    isStoredInMemoryOnly: true,
+                    cloudKitDatabase: .none
                 )
                 do {
                     return try ModelContainer(for: schema, configurations: [inMemoryConfig])
