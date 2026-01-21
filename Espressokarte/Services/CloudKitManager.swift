@@ -56,7 +56,7 @@ final class CloudKitManager: ObservableObject {
         self.publicDatabase = container.publicCloudDatabase
 
         // Load cached cafes immediately for instant display
-        self.cafes = LocalCacheManager.shared.loadCachedCafes()
+        self.cafes = SwiftDataCacheManager.shared.loadCachedCafes()
         if !self.cafes.isEmpty {
             self.hasCreatedSchema = true
         }
@@ -118,7 +118,7 @@ final class CloudKitManager: ObservableObject {
             }
 
             // Cache to local storage
-            LocalCacheManager.shared.cacheCafes(fetchedCafes)
+            SwiftDataCacheManager.shared.cacheCafes(fetchedCafes)
 
         } catch let ckError as CKError {
             // "Unknown Item" means no records exist yet - this is normal for a fresh database
