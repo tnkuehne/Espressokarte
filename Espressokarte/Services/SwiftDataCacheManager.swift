@@ -117,8 +117,7 @@ final class SwiftDataCacheManager {
                             menuImageData: priceRecord.menuImageData,
                             drinks: priceRecord.drinks
                         )
-                        cachedRecord.cafe = cachedCafe
-                        context.insert(cachedRecord)
+                        cachedCafe.priceHistory.append(cachedRecord)
                     }
                 }
             }
@@ -159,8 +158,7 @@ final class SwiftDataCacheManager {
                     menuImageData: priceRecord.menuImageData,
                     drinks: priceRecord.drinks
                 )
-                cachedRecord.cafe = cachedCafe
-                context.insert(cachedRecord)
+                cachedCafe.priceHistory.append(cachedRecord)
             }
         }
 
