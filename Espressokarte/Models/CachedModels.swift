@@ -12,7 +12,7 @@ import SwiftData
 @Model
 final class CachedCafe {
     /// Unique identifier - matches CloudKit record ID
-    @Attribute(.unique) var id: String
+    var id: String
 
     /// Name of the cafe
     var name: String
@@ -30,8 +30,8 @@ final class CachedCafe {
     var currentPrice: Double?
 
     /// Price history for this cafe
-    @Relationship(deleteRule: .cascade, inverse: \CachedPriceRecord.cafe)
-    var priceHistory: [CachedPriceRecord]
+    @Relationship(deleteRule: .cascade)
+    var priceHistory: [CachedPriceRecord] = []
 
     init(
         id: String,
@@ -47,7 +47,6 @@ final class CachedCafe {
         self.latitude = latitude
         self.longitude = longitude
         self.currentPrice = currentPrice
-        self.priceHistory = []
     }
 
     /// Convert to domain model
@@ -77,7 +76,7 @@ final class CachedCafe {
 @Model
 final class CachedPriceRecord {
     /// Unique identifier - matches CloudKit record ID
-    @Attribute(.unique) var id: String
+    var id: String
 
     /// When this price was recorded
     var date: Date
@@ -97,9 +96,6 @@ final class CachedPriceRecord {
 
     /// Drinks stored as JSON for simplicity
     var drinksJSON: Data?
-
-    /// Reference to parent cafe
-    var cafe: CachedCafe?
 
     init(
         id: String,
@@ -142,7 +138,7 @@ final class CachedPriceRecord {
 /// Metadata for cache sync status
 @Model
 final class CacheMetadata {
-    @Attribute(.unique) var key: String
+    var key: String
     var lastSyncDate: Date?
 
     init(key: String = "default", lastSyncDate: Date? = nil) {

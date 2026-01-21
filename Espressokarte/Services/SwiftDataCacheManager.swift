@@ -43,7 +43,35 @@ final class SwiftDataCacheManager {
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            // If we can't load the container, delete the old database and try again
+            // This handles schema migration issues for cache data (which can be safely regenerated)
+            print("SwiftData container failed to load, resetting cache: \(error)")
+
+            // Delete existing SwiftData files
+            let fileManager = FileManager.default
+            if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+                let defaultStore = appSupport.appendingPathComponent("default.store")
+                try? fileManager.removeItem(at: defaultStore)
+                try? fileManager.removeItem(at: defaultStore.appendingPathExtension("shm"))
+                try? fileManager.removeItem(at: defaultStore.appendingPathExtension("wal"))
+            }
+
+            // Try again with fresh database
+            do {
+                return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            } catch {
+                // Last resort: use in-memory storage
+                print("SwiftData still failed, using in-memory storage: \(error)")
+                let inMemoryConfig = ModelConfiguration(
+                    schema: schema,
+                    isStoredInMemoryOnly: true
+                )
+                do {
+                    return try ModelContainer(for: schema, configurations: [inMemoryConfig])
+                } catch {
+                    fatalError("Could not create ModelContainer even in-memory: \(error)")
+                }
+            }
         }
     }
 
