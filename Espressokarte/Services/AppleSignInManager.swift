@@ -112,6 +112,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
             kSecAttrAccessGroup as String: keychainAccessGroup,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
         ]
         SecItemDelete(deleteQuery as CFDictionary)
 
@@ -121,6 +122,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
             kSecAttrAccessGroup as String: keychainAccessGroup,
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+            kSecAttrSynchronizable as String: true,
         ]
         SecItemAdd(addQuery as CFDictionary, nil)
     }
@@ -130,6 +132,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
             kSecAttrAccessGroup as String: keychainAccessGroup,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
@@ -153,6 +156,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
             kSecAttrAccessGroup as String: keychainAccessGroup,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
         ]
         SecItemDelete(query as CFDictionary)
     }
