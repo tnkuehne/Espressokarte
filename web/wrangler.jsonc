@@ -16,6 +16,12 @@
   "observability": {
     "enabled": true,
   },
+  "kv_namespaces": [
+    {
+      "binding": "ANALYTICS_CACHE",
+      "id": "f82543b586ae42c28a87b6a08eb37f6b",
+    },
+  ],
   "routes": [
     {
       "pattern": "espresso.timokuehne.com",
