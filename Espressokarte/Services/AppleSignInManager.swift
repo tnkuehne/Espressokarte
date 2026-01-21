@@ -119,15 +119,6 @@ final class AppleSignInManager: NSObject, ObservableObject {
         userName = nil
     }
 
-    /// Sets a recovered user name (e.g., from CloudKit fallback)
-    /// This stores the name in both Keychain and UserDefaults for future use
-    func setRecoveredUserName(_ name: String) {
-        userName = name
-        let sharedDefaults = UserDefaults(suiteName: appGroup)
-        sharedDefaults?.set(name, forKey: userNameKey)
-        storeUserNameInKeychain(name)
-    }
-
     // MARK: - Private Helpers
 
     private func getStoredToken() -> String? {
@@ -175,6 +166,7 @@ final class AppleSignInManager: NSObject, ObservableObject {
     }
 
     /// Stores user name in Keychain for persistence across app reinstalls
+    /// Uses kSecAttrAccessibleAfterFirstUnlock (without ThisDeviceOnly) to enable iCloud Keychain sync
     private func storeUserNameInKeychain(_ name: String) {
         let data = Data(name.utf8)
 
@@ -186,13 +178,13 @@ final class AppleSignInManager: NSObject, ObservableObject {
         ]
         SecItemDelete(deleteQuery as CFDictionary)
 
-        // Add new item
+        // Add new item - uses kSecAttrAccessibleAfterFirstUnlock to sync via iCloud Keychain
         let addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: userNameKeychainKey,
             kSecAttrAccessGroup as String: keychainAccessGroup,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
         ]
         SecItemAdd(addQuery as CFDictionary, nil)
     }

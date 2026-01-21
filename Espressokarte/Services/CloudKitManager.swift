@@ -80,38 +80,6 @@ final class CloudKitManager: ObservableObject {
         }
     }
 
-    /// Fetches the user's name from their existing price records in CloudKit
-    /// This is a fallback when Apple Sign In doesn't provide the name (e.g., after app reinstall)
-    func fetchUserNameFromExistingRecords() async -> String? {
-        guard !currentUserRecordID.isEmpty else {
-            return nil
-        }
-
-        do {
-            // Query for any price record added by this user
-            let predicate = NSPredicate(format: "addedBy == %@", currentUserRecordID)
-            let query = CKQuery(recordType: priceRecordType, predicate: predicate)
-            query.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
-
-            let (results, _) = try await publicDatabase.records(matching: query, resultsLimit: 1)
-
-            for (_, result) in results {
-                switch result {
-                case .success(let record):
-                    if let name = record["addedByName"] as? String, !name.isEmpty {
-                        return name
-                    }
-                case .failure:
-                    continue
-                }
-            }
-        } catch {
-            print("Error fetching user name from CloudKit: \(error)")
-        }
-
-        return nil
-    }
-
     // MARK: - Fetching Data
 
     /// Fetches all cafes with their price records from CloudKit
@@ -229,19 +197,8 @@ final class CloudKitManager: ObservableObject {
             throw CloudKitError.notSignedIn
         }
 
-        // Get the user name from Apple Sign In, with CloudKit fallback
-        var userName = AppleSignInManager.shared.userName
-
-        // If name not available locally, try to recover from CloudKit (user's existing records)
-        if userName == nil {
-            if let cloudKitName = await fetchUserNameFromExistingRecords() {
-                // Store recovered name for future use
-                await AppleSignInManager.shared.setRecoveredUserName(cloudKitName)
-                userName = cloudKitName
-            }
-        }
-
-        guard let userName else {
+        // Get the user name from Apple Sign In
+        guard let userName = AppleSignInManager.shared.userName else {
             throw CloudKitError.noUserName
         }
         currentUserName = userName

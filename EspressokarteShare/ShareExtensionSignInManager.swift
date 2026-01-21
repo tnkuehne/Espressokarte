@@ -105,6 +105,7 @@ final class ShareExtensionSignInManager: NSObject {
     }
 
     /// Stores user name in Keychain for persistence across app reinstalls
+    /// Uses kSecAttrAccessibleAfterFirstUnlock (without ThisDeviceOnly) to enable iCloud Keychain sync
     private func storeUserNameInKeychain(_ name: String) {
         let data = Data(name.utf8)
 
@@ -116,13 +117,13 @@ final class ShareExtensionSignInManager: NSObject {
         ]
         SecItemDelete(deleteQuery as CFDictionary)
 
-        // Add new item
+        // Add new item - uses kSecAttrAccessibleAfterFirstUnlock to sync via iCloud Keychain
         let addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: userNameKeychainKey,
             kSecAttrAccessGroup as String: keychainAccessGroup,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
         ]
         SecItemAdd(addQuery as CFDictionary, nil)
     }
