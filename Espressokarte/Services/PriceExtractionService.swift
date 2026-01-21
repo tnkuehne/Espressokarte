@@ -53,7 +53,7 @@ final class PriceExtractionService: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.timeoutInterval = 30
+        request.timeoutInterval = 90
 
         let body: [String: Any] = [
             "image": base64Image,
@@ -61,8 +61,10 @@ final class PriceExtractionService: ObservableObject {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        // Send request
-        let (data, response) = try await URLSession.shared.data(for: request)
+        // Send request on background thread to avoid main thread interference
+        let (data, response) = try await Task.detached(priority: .userInitiated) {
+            try await URLSession.shared.data(for: request)
+        }.value
 
         // Check HTTP status
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -119,7 +121,7 @@ struct DrinkPrice: Codable, Sendable, Hashable {
 
 struct PriceExtractionResult: Sendable {
     let drinks: [DrinkPrice]
-    
+
     /// Find espresso price from the drinks array
     var espressoPrice: Double? {
         // Look for exact "Espresso" first, then partial matches
@@ -127,7 +129,7 @@ struct PriceExtractionResult: Sendable {
             return espresso.price
         }
         // Fallback: find any drink containing "espresso" but not "double" or "doppio"
-        if let espresso = drinks.first(where: { 
+        if let espresso = drinks.first(where: {
             let name = $0.name.lowercased()
             return name.contains("espresso") && !name.contains("double") && !name.contains("doppio")
         }) {
