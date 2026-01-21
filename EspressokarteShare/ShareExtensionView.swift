@@ -22,14 +22,6 @@ struct ShareExtensionView: View {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel", action: onCancel)
                     }
-                    ToolbarItem(placement: .confirmationAction) {
-                        if viewModel.canSave {
-                            Button("Save") {
-                                Task { await viewModel.save() }
-                            }
-                            .fontWeight(.semibold)
-                        }
-                    }
                 }
         }
     }
@@ -51,9 +43,6 @@ struct ShareExtensionView: View {
         case .fetchingImage:
             FetchingImageView(placeName: viewModel.photoData?.placeName)
 
-        case .extractingPrice:
-            ExtractingPriceView(image: viewModel.menuImage)
-
         case .selectingCafe:
             CafeSelectionView(
                 cafes: viewModel.matchingCafes,
@@ -61,21 +50,11 @@ struct ShareExtensionView: View {
                 onSelect: { viewModel.selectCafe($0) }
             )
 
-        case .ready:
-            if let cafe = viewModel.selectedCafe, let price = viewModel.extractedPrice {
-                ReadyToSaveView(
-                    cafe: cafe,
-                    price: price,
-                    image: viewModel.menuImage,
-                    priceDate: $viewModel.priceDate
-                )
-            }
+        case .queuing:
+            LoadingStateView(message: "Queuing...")
 
-        case .saving:
-            LoadingStateView(message: "Saving price...")
-
-        case .success:
-            SuccessView(onComplete: onComplete)
+        case .queued:
+            QueuedView(onComplete: onComplete)
 
         case .error(let message):
             ErrorView(
@@ -161,31 +140,6 @@ struct FetchingImageView: View {
     }
 }
 
-struct ExtractingPriceView: View {
-    let image: UIImage?
-
-    var body: some View {
-        VStack(spacing: 20) {
-            if let image = image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxHeight: 200)
-                    .cornerRadius(12)
-                    .shadow(radius: 4)
-            }
-
-            VStack(spacing: 8) {
-                ProgressView()
-                Text("Extracting espresso price...")
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
 struct CafeSelectionView: View {
     let cafes: [ShareCafeData]
     let placeName: String
@@ -232,99 +186,6 @@ struct CafeSelectionView: View {
     }
 }
 
-struct ReadyToSaveView: View {
-    let cafe: ShareCafeData
-    let price: Double
-    let image: UIImage?
-    @Binding var priceDate: Date
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                if let image = image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxHeight: 180)
-                        .cornerRadius(12)
-                        .shadow(radius: 4)
-                }
-
-                VStack(spacing: 8) {
-                    Text(String(format: "%.2f", price))
-                        .font(.system(size: 64, weight: .bold, design: .rounded))
-
-                    Text("Espresso price detected")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-
-                VStack(spacing: 4) {
-                    Text(cafe.name)
-                        .font(.headline)
-                    Text(cafe.address)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-
-                // Date picker for when the photo was taken
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Photo taken on")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-
-                    DatePicker(
-                        "",
-                        selection: $priceDate,
-                        in: ...Date(),
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.compact)
-                    .labelsHidden()
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-            }
-            .padding()
-        }
-    }
-}
-
-struct SuccessView: View {
-    let onComplete: () -> Void
-
-    var body: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 80))
-                .foregroundColor(.green)
-
-            Text("Price Saved!")
-                .font(.title2)
-                .fontWeight(.semibold)
-
-            Text("The espresso price has been added to Espressokarte.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-
-            Button("Done") {
-                onComplete()
-            }
-            .buttonStyle(.borderedProminent)
-            .padding(.top)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
 struct ErrorView: View {
     let message: String
     let onRetry: () -> Void
@@ -357,6 +218,36 @@ struct ErrorView: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
+            .padding(.top)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct QueuedView: View {
+    let onComplete: () -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "clock.badge.checkmark.fill")
+                .font(.system(size: 80))
+                .foregroundColor(.blue)
+
+            Text("Queued for Processing")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text("The price will be extracted when you open Espressokarte. You'll see it in \"Pending Extractions\".")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+
+            Button("Done") {
+                onComplete()
+            }
+            .buttonStyle(.borderedProminent)
             .padding(.top)
         }
         .padding()

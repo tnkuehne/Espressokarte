@@ -13,6 +13,8 @@ struct MapView: View {
     @StateObject private var cloudKitManager = CloudKitManager.shared
     @StateObject private var locationManager = LocationManager.shared
     @StateObject private var drinkFilter = DrinkFilterManager.shared
+    @StateObject private var pendingExtractionManager = PendingExtractionManager.shared
+    @StateObject private var backgroundExtractionManager = BackgroundExtractionManager.shared
 
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var selectedCafe: Cafe?
@@ -20,6 +22,7 @@ struct MapView: View {
     @State private var showCafeDetail = false
     @State private var shouldRefreshAfterAdd = false
     @State private var showDrinkFilter = false
+    @State private var showPendingExtractions = false
 
     /// Cafes filtered to only those that have the selected drink
     private var filteredCafes: [Cafe] {
@@ -114,6 +117,22 @@ struct MapView: View {
                 }
                 .padding(.top, 100)
             }
+
+            // Pending extractions status banner
+            if !pendingExtractionManager.pendingExtractions.isEmpty {
+                VStack {
+                    PendingExtractionsStatusView(
+                        pendingCount: pendingExtractionManager.pendingExtractions.count,
+                        isProcessing: backgroundExtractionManager.isProcessing,
+                        currentProgress: backgroundExtractionManager.currentProgress
+                    )
+                    .onTapGesture {
+                        showPendingExtractions = true
+                    }
+                    Spacer()
+                }
+                .padding(.top, 60)
+            }
         }
         .sheet(isPresented: $showAddPrice) {
             AddPriceView(onPriceSaved: {
@@ -145,6 +164,11 @@ struct MapView: View {
         .sheet(isPresented: $showDrinkFilter) {
             DrinkFilterSheet()
                 .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showPendingExtractions) {
+            PendingExtractionsListView()
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
         .onChange(of: cloudKitManager.cafes) { _, cafes in
@@ -288,6 +312,174 @@ struct Triangle: Shape {
         path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
         path.closeSubpath()
         return path
+    }
+}
+
+/// Status banner for pending extractions
+struct PendingExtractionsStatusView: View {
+    let pendingCount: Int
+    let isProcessing: Bool
+    let currentProgress: String?
+
+    var body: some View {
+        HStack(spacing: 8) {
+            if isProcessing {
+                ProgressView()
+                    .scaleEffect(0.8)
+            } else {
+                Image(systemName: "clock.fill")
+                    .foregroundColor(.orange)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(isProcessing ? "Processing..." : "\(pendingCount) pending")
+                    .font(.system(size: 13, weight: .semibold))
+
+                if let progress = currentProgress {
+                    Text(progress)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
+        .cornerRadius(20)
+        .shadow(radius: 2)
+    }
+}
+
+/// List view showing all pending extractions
+struct PendingExtractionsListView: View {
+    @StateObject private var pendingManager = PendingExtractionManager.shared
+    @StateObject private var backgroundManager = BackgroundExtractionManager.shared
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if pendingManager.pendingExtractions.isEmpty {
+                    ContentUnavailableView(
+                        "No Pending Extractions",
+                        systemImage: "checkmark.circle",
+                        description: Text("All price extractions have been processed")
+                    )
+                } else {
+                    ForEach(pendingManager.pendingExtractions) { extraction in
+                        PendingExtractionRow(extraction: extraction)
+                    }
+                    .onDelete { indexSet in
+                        for index in indexSet {
+                            let extraction = pendingManager.pendingExtractions[index]
+                            pendingManager.removeExtraction(extraction)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Pending Extractions")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+
+                if !pendingManager.pendingExtractions.isEmpty && !backgroundManager.isProcessing {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Process Now") {
+                            backgroundManager.startProcessing()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Row showing a single pending extraction
+struct PendingExtractionRow: View {
+    let extraction: PendingExtraction
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(extraction.cafeName)
+                    .font(.headline)
+                Text(extraction.cafeAddress)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+
+                HStack(spacing: 4) {
+                    statusIcon
+                    Text(statusText)
+                        .font(.caption)
+                        .foregroundColor(statusColor)
+                }
+            }
+
+            Spacer()
+
+            if extraction.status == .failed, let error = extraction.lastError {
+                Text(error)
+                    .font(.caption2)
+                    .foregroundColor(.red)
+                    .lineLimit(2)
+                    .frame(maxWidth: 100)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var statusIcon: some View {
+        Group {
+            switch extraction.status {
+            case .queued:
+                Image(systemName: "clock")
+            case .extracting:
+                ProgressView().scaleEffect(0.6)
+            case .saving:
+                ProgressView().scaleEffect(0.6)
+            case .completed:
+                Image(systemName: "checkmark.circle.fill")
+            case .failed:
+                Image(systemName: "exclamationmark.triangle.fill")
+            }
+        }
+        .foregroundColor(statusColor)
+    }
+
+    private var statusText: String {
+        switch extraction.status {
+        case .queued:
+            return "Waiting..."
+        case .extracting:
+            return "Extracting prices..."
+        case .saving:
+            return "Saving..."
+        case .completed:
+            return "Completed"
+        case .failed:
+            return "Failed (retry \(extraction.retryCount)/\(PendingExtraction.maxRetries))"
+        }
+    }
+
+    private var statusColor: Color {
+        switch extraction.status {
+        case .queued:
+            return .orange
+        case .extracting, .saving:
+            return .blue
+        case .completed:
+            return .green
+        case .failed:
+            return .red
+        }
     }
 }
 
