@@ -66,3 +66,6 @@ playground.xcworkspace
 
 # Project-specific
 *.log
+
+# Node.js
+node_modules/
