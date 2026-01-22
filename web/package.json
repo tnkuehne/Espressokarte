@@ -25,7 +25,7 @@
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "vite": "^7.2.6",
-    "wrangler": "^4.58.0"
+    "wrangler": "^4.59.1"
   },
   "dependencies": {
     "bits-ui": "^2.15.4",
