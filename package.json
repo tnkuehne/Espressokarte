@@ -1,0 +1,25 @@
+{
+  "name": "espressokarte",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:worker": "pnpm --filter worker dev",
+    "build:web": "pnpm --filter web build",
+    "deploy:worker": "pnpm --filter worker deploy",
+    "check": "pnpm --filter web check",
+    "test": "pnpm --filter worker test"
+  },
+  "packageManager": "pnpm@10.11.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "protobufjs",
+      "sharp",
+      "workerd"
+    ],
+    "verifyDepsBeforeRun": "install"
+  }
+}
