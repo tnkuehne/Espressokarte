@@ -5,12 +5,24 @@
 //  Created by Timo Kuehne on 07.01.26.
 //
 
+import SwiftData
 import SwiftUI
 
 @main
 struct EspressokarteApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
+
+    let modelContainer: ModelContainer
+
+    init() {
+        // Create and configure the SwiftData container
+        let container = SwiftDataCacheManager.createModelContainer()
+        self.modelContainer = container
+
+        // Configure the cache manager with the container
+        SwiftDataCacheManager.shared.configure(with: container)
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -24,6 +36,7 @@ struct EspressokarteApp: App {
                 }
             }
         }
+        .modelContainer(modelContainer)
     }
 }
 

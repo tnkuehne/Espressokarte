@@ -6,6 +6,7 @@
 //
 
 import CoreLocation
+import SwiftData
 import Testing
 
 @testable import Espressokarte
@@ -288,12 +289,28 @@ struct MapItemDataTests {
     }
 }
 
-// MARK: - LocalCacheManager Tests
+// MARK: - SwiftDataCacheManager Tests
 
-struct LocalCacheManagerTests {
+@MainActor
+struct SwiftDataCacheManagerTests {
+
+    /// Creates an in-memory cache manager for testing
+    private func createTestCacheManager() -> SwiftDataCacheManager {
+        let schema = Schema([
+            CachedCafe.self,
+            CachedPriceRecord.self,
+            CacheMetadata.self
+        ])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try! ModelContainer(for: schema, configurations: [config])
+
+        let manager = SwiftDataCacheManager.shared
+        manager.configure(with: container)
+        return manager
+    }
 
     @Test func cacheAndLoadCafes() {
-        let cacheManager = LocalCacheManager.shared
+        let cacheManager = createTestCacheManager()
 
         // Clear any existing cache
         cacheManager.clearCache()
@@ -325,18 +342,23 @@ struct LocalCacheManagerTests {
         let loadedCafes = cacheManager.loadCachedCafes()
 
         #expect(loadedCafes.count == 2)
-        #expect(loadedCafes[0].id == "cafe-1")
-        #expect(loadedCafes[0].name == "Cafe One")
-        #expect(loadedCafes[0].currentPrice == 2.50)
-        #expect(loadedCafes[1].id == "cafe-2")
-        #expect(loadedCafes[1].name == "Cafe Two")
+
+        // Find cafes by ID since order may vary with SwiftData
+        let cafe1 = loadedCafes.first { $0.id == "cafe-1" }
+        let cafe2 = loadedCafes.first { $0.id == "cafe-2" }
+
+        #expect(cafe1 != nil)
+        #expect(cafe1?.name == "Cafe One")
+        #expect(cafe1?.currentPrice == 2.50)
+        #expect(cafe2 != nil)
+        #expect(cafe2?.name == "Cafe Two")
 
         // Clean up
         cacheManager.clearCache()
     }
 
     @Test func clearCache() {
-        let cacheManager = LocalCacheManager.shared
+        let cacheManager = createTestCacheManager()
 
         // Cache a cafe
         let cafe = Cafe(
@@ -357,7 +379,7 @@ struct LocalCacheManagerTests {
     }
 
     @Test func lastSyncDateUpdates() {
-        let cacheManager = LocalCacheManager.shared
+        let cacheManager = createTestCacheManager()
 
         // Clear cache
         cacheManager.clearCache()
@@ -374,11 +396,48 @@ struct LocalCacheManagerTests {
     }
 
     @Test func loadEmptyCache() {
-        let cacheManager = LocalCacheManager.shared
+        let cacheManager = createTestCacheManager()
         cacheManager.clearCache()
 
         let cafes = cacheManager.loadCachedCafes()
         #expect(cafes.isEmpty)
+    }
+
+    @Test func cacheWithPriceHistory() {
+        let cacheManager = createTestCacheManager()
+        cacheManager.clearCache()
+
+        // Create cafe with price history
+        let priceRecord = PriceRecord(
+            id: "price-1",
+            date: Date(),
+            addedBy: "user-1",
+            addedByName: "Test User",
+            note: "Great espresso!",
+            drinks: [DrinkPrice(name: "Espresso", price: 2.50)]
+        )
+
+        let cafe = Cafe(
+            id: "cafe-1",
+            name: "Test Cafe",
+            address: "Test Address",
+            latitude: 48.1351,
+            longitude: 11.5820,
+            currentPrice: 2.50,
+            priceHistory: [priceRecord]
+        )
+
+        cacheManager.cacheCafes([cafe])
+
+        let loadedCafes = cacheManager.loadCachedCafes()
+        #expect(loadedCafes.count == 1)
+
+        let loadedCafe = loadedCafes.first!
+        #expect(loadedCafe.priceHistory.count == 1)
+        #expect(loadedCafe.priceHistory.first?.addedByName == "Test User")
+        #expect(loadedCafe.priceHistory.first?.drinks.first?.name == "Espresso")
+
+        cacheManager.clearCache()
     }
 }
 
